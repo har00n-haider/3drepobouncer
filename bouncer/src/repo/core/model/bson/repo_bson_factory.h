@@ -29,6 +29,7 @@
 #include "repo_bson_user.h"
 #include "repo_node.h"
 #include "repo_node_camera.h"
+#include "repo_node_light.h"
 #include "repo_node_metadata.h"
 #include "repo_node_material.h"
 #include "repo_node_map.h"
@@ -176,6 +177,21 @@ namespace repo {
 					const repo_vector_t &up,
 					const std::string   &name = std::string(),
 					const int           &apiLevel = REPO_NODE_API_LEVEL_1);
+
+				static LightNode makeLightNode(
+					const LightNode::LightType       &type,
+					const repo_vector_t   &position,
+					const repo_vector_t   &direction,
+					const repo_color3d_t  &ambientColor,
+					const repo_color3d_t  &specularColor,
+					const repo_color3d_t  &diffuseColor,
+					const float           &innerConeAngle,
+					const float           &outerConeAngle,
+					const float           &attentuationConstant,
+					const float           &attentuationLinear,
+					const float           &attentuationQuadratic,
+					const std::string     &name = std::string(),
+					const int             &apiLevel = REPO_NODE_API_LEVEL_1);
 
 				/**
 				* Create a Material Node

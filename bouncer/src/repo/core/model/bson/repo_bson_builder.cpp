@@ -49,20 +49,32 @@ RepoBSON RepoBSONBuilder::obj()
 	return RepoBSON(mongo::BSONObjBuilder::obj());
 }
 
-template<> void repo::core::model::RepoBSONBuilder::append < repoUUID >
-	(
-		const std::string &label,
-		const repoUUID &uuid
-		)
+template<>
+void repo::core::model::RepoBSONBuilder::append < repoUUID >
+(
+const std::string &label,
+const repoUUID &uuid
+)
 {
 	appendUUID(label, uuid);
 }
 
-	template<> void repo::core::model::RepoBSONBuilder::append < repo_vector_t >
-		(
-			const std::string &label,
-			const repo_vector_t &vec
-			)
-	{
-		appendArray(label, std::vector<float>({ vec.x, vec.y, vec.z }));
-	}
+template<>
+void repo::core::model::RepoBSONBuilder::append < repo_vector_t >
+(
+const std::string &label,
+const repo_vector_t &vec
+)
+{
+	appendArray(label, std::vector<float>({ vec.x, vec.y, vec.z }));
+}
+
+template<>
+void repo::core::model::RepoBSONBuilder::append < repo_color3d_t >
+(
+const std::string &label,
+const repo_color3d_t &vec
+)
+{
+	appendArray(label, std::vector<float>({ vec.r, vec.g, vec.b }));
+}

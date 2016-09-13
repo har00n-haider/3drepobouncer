@@ -148,6 +148,7 @@ namespace repo{
 				repo::core::model::RepoNodeSet createTransformationNodesRecursive(
 					const aiNode                                                         *assimpNode,
 					const std::unordered_map<std::string, repo::core::model::RepoNode *> &cameras,
+					const std::unordered_map<std::string, repo::core::model::RepoNode *> &lights,
 					const std::vector<repo::core::model::RepoNode >                      &meshes,
 					const std::unordered_map<repoUUID, repo::core::model::RepoNode *, RepoUUIDHasher>    &meshToMat,
 					std::unordered_map<repo::core::model::RepoNode *, std::vector<repoUUID>> &matParents,

@@ -610,6 +610,7 @@ repo::core::model::MetadataNode* AssimpModelImport::createMetadataRepoNode(
 repo::core::model::RepoNodeSet AssimpModelImport::createTransformationNodesRecursive(
 	const aiNode                                                     *assimpNode,
 	const std::unordered_map<std::string, repo::core::model::RepoNode *> &cameras,
+	const std::unordered_map<std::string, repo::core::model::RepoNode *> &lights,
 	const std::vector<repo::core::model::RepoNode>           &meshes,
 	const std::unordered_map<repoUUID, repo::core::model::RepoNode *, RepoUUIDHasher>    &meshToMat,
 	std::unordered_map<repo::core::model::RepoNode *, std::vector<repoUUID>> &matParents,
@@ -689,6 +690,19 @@ repo::core::model::RepoNodeSet AssimpModelImport::createTransformationNodesRecur
 		}
 
 		//--------------------------------------------------------------------------
+		// Register lights as children of this transformation (by name) if any
+		it = lights.find(assimpNode->mName.data);
+		if (lights.end() != it)
+		{
+			repo::core::model::RepoNode * light = it->second;
+			if (light)
+			{
+				repo::core::model::RepoNode tmp = light->cloneAndAddParent(sharedId);
+				light->swap(tmp);
+			}
+		}
+
+		//--------------------------------------------------------------------------
 		// Collect metadata and add as a child
 		if (assimpNode->mMetaData)
 		{
@@ -699,7 +713,6 @@ repo::core::model::RepoNodeSet AssimpModelImport::createTransformationNodesRecur
 			repo::core::model::MetadataNode *metachild = createMetadataRepoNode(assimpNode->mMetaData, metadataName, myShareID);
 			metadata.insert(metachild);
 		}
-
 		transNodes.insert(transNode);
 
 		//--------------------------------------------------------------------------
@@ -708,7 +721,7 @@ repo::core::model::RepoNodeSet AssimpModelImport::createTransformationNodesRecur
 		{
 			repo::core::model::RepoNodeSet childMetadata;
 			repo::core::model::RepoNodeSet childSet = createTransformationNodesRecursive(assimpNode->mChildren[i],
-				cameras, meshes, meshToMat, matParents, newMeshes, childMetadata, ++count, worldOffset, myShareID);
+				cameras, lights, meshes, meshToMat, matParents, newMeshes, childMetadata, ++count, worldOffset, myShareID);
 
 			transNodes.insert(childSet.begin(), childSet.end());
 			metadata.insert(childMetadata.begin(), childMetadata.end());
@@ -731,12 +744,13 @@ repo::core::model::RepoScene* AssimpModelImport::convertAiSceneToRepoScene()
 		repo::core::model::RepoNodeSet metadata; //!< Metadata
 		repo::core::model::RepoNodeSet transformations; //!< Transformations
 		repo::core::model::RepoNodeSet textures;
+		repo::core::model::RepoNodeSet lights;
 
 		std::vector<repo::core::model::RepoNode *> originalOrderMaterial; //vector that keeps track original order for assimp indices
 		std::unordered_map<repo::core::model::RepoNode *, std::vector<repoUUID>> matParents;//Tracks material parents
 		std::unordered_map<repoUUID, repo::core::model::RepoNode*, RepoUUIDHasher> meshToMat;
 		std::vector<repo::core::model::RepoNode> originalOrderMesh; //vector that keeps track original order for assimp indices
-		std::unordered_map<std::string, repo::core::model::RepoNode *> camerasMap;
+		std::unordered_map<std::string, repo::core::model::RepoNode *> camerasMap, lightMap;
 		std::unordered_map<std::string, repo::core::model::RepoNode *> nameToTexture;
 
 		std::vector<std::vector<double>> sceneBbox = getSceneBoundingBox();
@@ -960,10 +974,46 @@ repo::core::model::RepoScene* AssimpModelImport::convertAiSceneToRepoScene()
 		//}
 
 		//--------------------------------------------------------------------------
-		// TODO: Lights
-		//if (assimpScene->HasLights())
-		//{
-		//}
+		// Lights
+
+		if (assimpScene->HasLights())
+		{
+			for (unsigned int i = 0; i < assimpScene->mNumLights; ++i)
+			{
+				auto assimpLight = assimpScene->mLights[i];
+				repo::core::model::LightNode::LightType type;
+				switch (assimpLight->mType)
+				{
+				case aiLightSourceType::aiLightSource_AMBIENT:
+					type = repo::core::model::LightNode::LightType::AMBIENT;
+					break;
+				case aiLightSourceType::aiLightSource_DIRECTIONAL:
+					type = repo::core::model::LightNode::LightType::DIRECTIONAL;
+					break;
+				case aiLightSourceType::aiLightSource_POINT:
+					type = repo::core::model::LightNode::LightType::POINT;
+					break;
+				case aiLightSourceType::aiLightSource_SPOT:
+					type = repo::core::model::LightNode::LightType::SPOT;
+					break;
+				default:
+					type = repo::core::model::LightNode::LightType::UNKNOWN;
+				}
+				std::string lightName = assimpLight->mName.C_Str();
+
+				auto light = new repo::core::model::LightNode(repo::core::model::RepoBSONFactory::makeLightNode(
+					type, { assimpLight->mPosition.x, assimpLight->mPosition.y, assimpLight->mPosition.z },
+					{ assimpLight->mDirection.x, assimpLight->mDirection.y, assimpLight->mDirection.z },
+					{ assimpLight->mColorAmbient.r, assimpLight->mColorAmbient.g, assimpLight->mColorAmbient.b },
+					{ assimpLight->mColorSpecular.r, assimpLight->mColorSpecular.g, assimpLight->mColorSpecular.b },
+					{ assimpLight->mColorDiffuse.r, assimpLight->mColorDiffuse.g, assimpLight->mColorDiffuse.b },
+					assimpLight->mAngleInnerCone, assimpLight->mAngleOuterCone, assimpLight->mAttenuationConstant,
+					assimpLight->mAttenuationLinear, assimpLight->mAttenuationQuadratic, lightName
+					));
+				lightMap[lightName] = light;
+				lights.insert(light);
+			}
+		}
 
 		// TODO: Bones
 
@@ -977,7 +1027,7 @@ repo::core::model::RepoScene* AssimpModelImport::convertAiSceneToRepoScene()
 
 		uint32_t count = 0;
 		transformations = createTransformationNodesRecursive(assimpScene->mRootNode,
-			camerasMap, originalOrderMesh, meshToMat, matParents, meshes, metadata, count, sceneBbox[0]);
+			camerasMap, lightMap, originalOrderMesh, meshToMat, matParents, meshes, metadata, count, sceneBbox[0]);
 
 		repoInfo << "Node Construction completed. (#transformations: " << transformations.size() << ", #Metadata" << metadata.size() << ")";
 
@@ -996,9 +1046,10 @@ repo::core::model::RepoScene* AssimpModelImport::convertAiSceneToRepoScene()
 		*/
 
 		std::vector<std::string> fileVect;
+		repo::core::model::RepoNodeSet dummy;
 		if (!orgFile.empty())
 			fileVect.push_back(orgFile);
-		scenePtr = new repo::core::model::RepoScene(fileVect, cameras, meshes, materials, metadata, textures, transformations);
+		scenePtr = new repo::core::model::RepoScene(fileVect, cameras, meshes, materials, metadata, textures, transformations, dummy, dummy, lights);
 		if (missingTextures)
 		{
 			scenePtr->setMissingTexture();

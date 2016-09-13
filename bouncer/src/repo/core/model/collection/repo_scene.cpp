@@ -80,6 +80,7 @@ RepoScene::RepoScene(
 	const RepoNodeSet              &transformations,
 	const RepoNodeSet              &references,
 	const RepoNodeSet              &maps,
+	const RepoNodeSet              &lights,
 	const RepoNodeSet              &unknowns,
 	const std::string              &sceneExt,
 	const std::string              &revExt,
@@ -110,7 +111,7 @@ RepoScene::RepoScene(
 	graph.rootNode = nullptr;
 	stashGraph.rootNode = nullptr;
 	branch = stringToUUID(REPO_HISTORY_MASTER_BRANCH);
-	populateAndUpdate(GraphType::DEFAULT, cameras, meshes, materials, metadata, textures, transformations, references, maps, unknowns);
+	populateAndUpdate(GraphType::DEFAULT, cameras, meshes, materials, metadata, textures, transformations, references, maps, lights, unknowns);
 }
 
 RepoScene::~RepoScene()
@@ -446,7 +447,7 @@ void RepoScene::addStashGraph(
 	const RepoNodeSet &textures,
 	const RepoNodeSet &transformations)
 {
-	populateAndUpdate(GraphType::OPTIMIZED, cameras, meshes, materials, RepoNodeSet(),
+	populateAndUpdate(GraphType::OPTIMIZED, cameras, meshes, materials, RepoNodeSet(), RepoNodeSet(),
 		textures, transformations, RepoNodeSet(), RepoNodeSet(), RepoNodeSet());
 }
 
@@ -1323,6 +1324,11 @@ bool RepoScene::populate(
 			node = new CameraNode(obj);
 			g.cameras.insert(node);
 		}
+		else if (REPO_NODE_TYPE_LIGHT == nodeType)
+		{
+			node = new LightNode(obj);
+			g.lights.insert(node);
+		}
 		else if (REPO_NODE_TYPE_REFERENCE == nodeType)
 		{
 			node = new ReferenceNode(obj);
@@ -1407,6 +1413,7 @@ void RepoScene::populateAndUpdate(
 	const RepoNodeSet &transformations,
 	const RepoNodeSet &references,
 	const RepoNodeSet &maps,
+	const RepoNodeSet &lights,
 	const RepoNodeSet &unknowns)
 {
 	std::string errMsg;
@@ -1419,6 +1426,7 @@ void RepoScene::populateAndUpdate(
 	addNodeToScene(gType, transformations, errMsg, &(instance.transformations));
 	addNodeToScene(gType, references, errMsg, &(instance.references));
 	addNodeToScene(gType, maps, errMsg, &(instance.maps));
+	addNodeToScene(gType, lights, errMsg, &(instance.maps));
 	addNodeToScene(gType, unknowns, errMsg, &(instance.unknowns));
 }
 
@@ -1458,7 +1466,6 @@ void RepoScene::reorientateDirectXModel()
 				worldOffset[2] = -worldOffset[1];
 				worldOffset[1] = temp;
 			}
-			
 		}
 		else
 		{

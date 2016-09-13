@@ -156,17 +156,25 @@ namespace repo {
 			};
 
 			// Template specialization
-			template<> void RepoBSONBuilder::append < repoUUID >
+			template<>
+			void RepoBSONBuilder::append < repoUUID >
 				(
-					const std::string &label,
-					const repoUUID &uuid
-					);
+				const std::string &label,
+				const repoUUID &uuid
+				);
 
-				template<> void RepoBSONBuilder::append < repo_vector_t >
-					(
-						const std::string &label,
-						const repo_vector_t &vec
-						);
+			template<>
+			void RepoBSONBuilder::append < repo_vector_t >
+				(
+				const std::string &label,
+				const repo_vector_t &vec
+				);
+			template<>
+			void RepoBSONBuilder::append < repo_color3d_t >
+				(
+				const std::string &label,
+				const repo_color3d_t &vec
+				);
 		}// end namespace model
 	} // end namespace core
 } // end namespace repo

@@ -124,6 +124,40 @@ CameraNode RepoBSONFactory::makeCameraNode(
 	return CameraNode(builder.obj());
 }
 
+LightNode RepoBSONFactory::makeLightNode(
+	const LightNode::LightType       &type,
+	const repo_vector_t   &position,
+	const repo_vector_t   &direction,
+	const repo_color3d_t  &ambientColor,
+	const repo_color3d_t  &specularColor,
+	const repo_color3d_t  &diffuseColor,
+	const float           &innerConeAngle,
+	const float           &outerConeAngle,
+	const float           &attentuationConstant,
+	const float           &attentuationLinear,
+	const float           &attentuationQuadratic,
+	const std::string     &name,
+	const int             &apiLevel)
+{
+	RepoBSONBuilder builder;
+	auto defaults = appendDefaults(REPO_NODE_TYPE_LIGHT, apiLevel, generateUUID(), name);
+	builder.appendElements(defaults);
+
+	builder << REPO_LIGHT_NODE_LABEL_LIGHT_TYPE << LightNode::getTypeAsString(type);
+	builder.append(REPO_LIGHT_NODE_LABEL_POSITION, position);
+	builder.append(REPO_LIGHT_NODE_LABEL_DIRECTION, direction);
+	builder.append(REPO_LIGHT_NODE_LABEL_COLOR_AMBIENT, ambientColor);
+	builder.append(REPO_LIGHT_NODE_LABEL_COLOR_SPECULAR, specularColor);
+	builder.append(REPO_LIGHT_NODE_LABEL_COLOR_DIFFUSE, diffuseColor);
+	builder << REPO_LIGHT_NODE_LABEL_CONE_ANGLE_INNER << innerConeAngle;
+	builder << REPO_LIGHT_NODE_LABEL_CONE_ANGLE_OUTER << outerConeAngle;
+	builder << REPO_LIGHT_NODE_LABEL_ATTEN_CONSTANT << attentuationConstant;
+	builder << REPO_LIGHT_NODE_LABEL_ATTEN_LINEAR << attentuationLinear;
+	builder << REPO_LIGHT_NODE_LABEL_ATTEN_QUADRATIC << attentuationQuadratic;
+
+	return LightNode(builder.obj());
+}
+
 MaterialNode RepoBSONFactory::makeMaterialNode(
 	const repo_material_t &material,
 	const std::string     &name,

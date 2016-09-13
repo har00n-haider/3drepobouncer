@@ -65,6 +65,12 @@ typedef struct{
 }repo_color4d_t;
 
 typedef struct{
+	float r;
+	float g;
+	float b;
+}repo_color3d_t;
+
+typedef struct{
 	float x;
 	float y;
 	float z;

@@ -54,6 +54,7 @@ namespace repo{
 					RepoNodeSet references; //!< References
 					RepoNodeSet textures; //!< Textures
 					RepoNodeSet transformations; //!< Transformations
+					RepoNodeSet lights;
 					RepoNodeSet unknowns; //!< Unknown types
 
 					RepoNode *rootNode;
@@ -133,6 +134,7 @@ namespace repo{
 					const RepoNodeSet              &transformations,
 					const RepoNodeSet              &references = RepoNodeSet(),
 					const RepoNodeSet              &maps = RepoNodeSet(),
+					const RepoNodeSet              &lights = RepoNodeSet(),
 					const RepoNodeSet              &unknowns = RepoNodeSet(),
 					const std::string              &sceneExt = REPO_COLLECTION_SCENE,
 					const std::string              &revExt = REPO_COLLECTION_HISTORY,
@@ -1034,6 +1036,7 @@ namespace repo{
 					const RepoNodeSet &transformations,
 					const RepoNodeSet &references,
 					const RepoNodeSet &maps,
+					const RepoNodeSet &lights,
 					const RepoNodeSet &unknowns);
 
 				/**
