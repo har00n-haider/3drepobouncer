@@ -44,24 +44,50 @@ LightNode::~LightNode()
 RepoNode LightNode::cloneAndApplyTransformation(
 	const std::vector<float> &matrix) const
 {
-	//RepoBSONBuilder builder;
-	//if (hasField(REPO_LIGHT_NODE_LABEL_POSITION))
-	//{
-	//	builder.append(REPO_NODE_LABEL_LOOK_AT, multiplyMatVec(matrix, getLookAt()));
-	//}
+	RepoBSONBuilder builder;
+	if (hasField(REPO_LIGHT_NODE_LABEL_DIRECTION))
+	{
+		builder.append(REPO_LIGHT_NODE_LABEL_DIRECTION, multiplyMatVec(matrix, getDirection()));
+	}
 
-	//if (hasField(REPO_NODE_LABEL_POSITION))
-	//{
-	//	builder.append(REPO_NODE_LABEL_POSITION, multiplyMatVec(matrix, getPosition()));
-	//}
+	if (hasField(REPO_LIGHT_NODE_LABEL_POSITION))
+	{
+		builder.append(REPO_LIGHT_NODE_LABEL_POSITION, multiplyMatVec(matrix, getPosition()));
+	}
 
-	//if (hasField(REPO_NODE_LABEL_UP))
-	//{
-	//	builder.append(REPO_NODE_LABEL_UP, multiplyMatVec(matrix, getUp()));
-	//}
-	repoError << "Trying to apply transformation on a light. not yet supported.";
+	return LightNode(builder.appendElementsUnique(*this));
+}
 
-	return *this;// LightNode(builder.appendElementsUnique(*this));
+repo_vector_t LightNode::getPosition() const
+{
+	repo_vector_t vec;
+	if (hasField(REPO_LIGHT_NODE_LABEL_POSITION))
+	{
+		std::vector<float> floatArr = getFloatArray(REPO_LIGHT_NODE_LABEL_POSITION);
+		if (floatArr.size() >= 3)
+		{
+			//repo_vector_t is effectively float[3]
+			std::copy(floatArr.begin(), floatArr.begin() + 3, (float*)&vec);
+		}
+	}
+
+	return vec;
+}
+
+repo_vector_t LightNode::getDirection() const
+{
+	repo_vector_t vec;
+	if (hasField(REPO_LIGHT_NODE_LABEL_DIRECTION))
+	{
+		std::vector<float> floatArr = getFloatArray(REPO_LIGHT_NODE_LABEL_DIRECTION);
+		if (floatArr.size() >= 3)
+		{
+			//repo_vector_t is effectively float[3]
+			std::copy(floatArr.begin(), floatArr.begin() + 3, (float*)&vec);
+		}
+	}
+
+	return vec;
 }
 
 std::string LightNode::getTypeAsString(

@@ -1426,7 +1426,7 @@ void RepoScene::populateAndUpdate(
 	addNodeToScene(gType, transformations, errMsg, &(instance.transformations));
 	addNodeToScene(gType, references, errMsg, &(instance.references));
 	addNodeToScene(gType, maps, errMsg, &(instance.maps));
-	addNodeToScene(gType, lights, errMsg, &(instance.maps));
+	addNodeToScene(gType, lights, errMsg, &(instance.lights));
 	addNodeToScene(gType, unknowns, errMsg, &(instance.unknowns));
 }
 

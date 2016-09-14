@@ -1000,10 +1000,14 @@ repo::core::model::RepoScene* AssimpModelImport::convertAiSceneToRepoScene()
 					type = repo::core::model::LightNode::LightType::UNKNOWN;
 				}
 				std::string lightName = assimpLight->mName.C_Str();
+				auto offset = sceneBbox.size() ? sceneBbox[0] : std::vector<double>();
+				aiVector3D offsetVec = offset.size() ? aiVector3D(offset[0], offset[1], offset[2]) : aiVector3D(0, 0, 0);
+				auto position = assimpLight->mPosition - offsetVec;
+				auto direction = assimpLight->mDirection - offsetVec;
 
 				auto light = new repo::core::model::LightNode(repo::core::model::RepoBSONFactory::makeLightNode(
-					type, { assimpLight->mPosition.x, assimpLight->mPosition.y, assimpLight->mPosition.z },
-					{ assimpLight->mDirection.x, assimpLight->mDirection.y, assimpLight->mDirection.z },
+					type, { position.x, position.y, position.z },
+					{ direction.x, direction.y, direction.z },
 					{ assimpLight->mColorAmbient.r, assimpLight->mColorAmbient.g, assimpLight->mColorAmbient.b },
 					{ assimpLight->mColorSpecular.r, assimpLight->mColorSpecular.g, assimpLight->mColorSpecular.b },
 					{ assimpLight->mColorDiffuse.r, assimpLight->mColorDiffuse.g, assimpLight->mColorDiffuse.b },

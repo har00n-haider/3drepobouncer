@@ -25,6 +25,7 @@
 #include "repo_optimizer_abstract.h"
 
 #include "../../core/model/bson/repo_node_camera.h"
+#include "../../core/model/bson/repo_node_light.h"
 #include "../../core/model/bson/repo_node_mesh.h"
 
 namespace repo {
@@ -75,6 +76,16 @@ namespace repo {
 				void applyOptimOnCamera(
 					repo::core::model::RepoScene *scene,
 					repo::core::model::CameraNode  *camera);
+
+				/**
+				* Apply optimization on the light, given
+				* it satisfies the condition for the optimisation to happen
+				* @param scene scene to optimise
+				* @param light light in question
+				*/
+				void applyOptimOnLight(
+					repo::core::model::RepoScene *scene,
+					repo::core::model::LightNode  *light);
 			};
 		}
 	}

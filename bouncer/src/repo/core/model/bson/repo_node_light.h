@@ -83,6 +83,18 @@ namespace repo {
 				}
 
 				/**
+				* Get the position of the light
+				* @return returns a vector of the position
+				*/
+				repo_vector_t getPosition() const;
+
+				/**
+				* Get the direction of the light
+				* @return returns a vector of the position
+				*/
+				repo_vector_t getDirection() const;
+
+				/**
 				* Check if the node is position dependant.
 				* i.e. if parent transformation is merged onto the node,
 				* does the node requre to a transformation applied to it

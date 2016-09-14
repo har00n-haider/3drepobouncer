@@ -629,12 +629,22 @@ namespace repo{
 
 				/**
 				* Get all camera nodes within current scene revision
-				* @return a RepoNodeSet of materials
+				* @return a RepoNodeSet of cameras
 				*/
 				RepoNodeSet getAllCameras(
 					const GraphType &gType) const
 				{
 					return  gType == GraphType::OPTIMIZED ? stashGraph.cameras : graph.cameras;
+				}
+
+				/**
+				* Get all light nodes within current scene revision
+				* @return a RepoNodeSet of lights
+				*/
+				RepoNodeSet getAllLights(
+					const GraphType &gType) const
+				{
+					return  gType == GraphType::OPTIMIZED ? stashGraph.lights : graph.lights;
 				}
 
 				/**

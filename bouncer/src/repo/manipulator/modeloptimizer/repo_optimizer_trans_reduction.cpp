@@ -92,6 +92,30 @@ bool TransformationReductionOptimizer::apply(repo::core::model::RepoScene *scene
 		}
 		repoInfo << "Camera Optimisation complete. Number of transformations has been reduced from "
 			<< transNodes_pre << " to " << scene->getAllTransformations(gType).size();
+
+		transNodes_pre = scene->getAllTransformations(gType).size();
+		auto lights = scene->getAllLights(gType);
+		repoTrace << "lights: " << lights.size();
+		count = 0;
+		total = lights.size();
+		for (repo::core::model::RepoNode *node : lights)
+		{
+			++count;
+			if (count % 100 == 0)
+			{
+				repoInfo << "Optimizer : processed " << count << " of " << total << " lights";
+			}
+			if (node && node->getTypeAsEnum() == repo::core::model::NodeType::LIGHT)
+			{
+				repo::core::model::LightNode *light = dynamic_cast<repo::core::model::LightNode*>(node);
+				if (light)
+					applyOptimOnLight(scene, light);
+				else
+					repoError << "Failed to dynamically cast a light node!!!";
+			}
+		}
+		repoInfo << "Light Optimisation complete. Number of transformations has been reduced from "
+			<< transNodes_pre << " to " << scene->getAllTransformations(gType).size();
 	}
 	else
 	{
@@ -293,6 +317,100 @@ void TransformationReductionOptimizer::applyOptimOnCamera(
 						//remove parent from the scene.
 						scene->removeNode(gType, parentSharedID);
 						delete newCam;
+					}
+					else
+					{
+						repoError << "Failed to dynamically cast a transformation node!!!!";
+					}
+				} //(singleMeshChild && noTransSiblings && granTransParents.size() == 1)
+			}//(trans->getUniqueID() != scene->getRoot()->getUniqueID() && trans->isIdentity())
+		}
+		else
+		{
+			repoError << "Failed to dynamically cast a transformation node!!!!";
+		}
+	}
+}
+
+void TransformationReductionOptimizer::applyOptimOnLight(
+	repo::core::model::RepoScene *scene,
+	repo::core::model::LightNode  *light)
+{
+	/*
+	* Assimp importer generates an extra transformation as a parent for the camera
+	* The camera and the transformation shares the same name.
+	* This function will remove this transformation provided the camera name matches
+	* the transformation's
+	*/
+	std::vector<repo::core::model::RepoNode*> transParents =
+		scene->getParentNodesFiltered(gType,
+		light, repo::core::model::NodeType::TRANSFORMATION);
+
+	if (transParents.size() == 1)
+	{
+		repo::core::model::TransformationNode *trans =
+			dynamic_cast<repo::core::model::TransformationNode*>(transParents[0]);
+		if (trans)
+		{
+			repoUUID parentUniqueID = trans->getUniqueID();
+			repoUUID parentSharedID = trans->getSharedID();
+			repoUUID rootUniqueID = scene->getRoot(gType)->getUniqueID();
+			bool isRoot = parentUniqueID == rootUniqueID;
+			bool isIdentity = trans->isIdentity();
+			if (!isRoot)
+			{
+				std::vector<repo::core::model::RepoNode*> children = scene->getChildrenAsNodes(gType, parentSharedID);
+				bool sameName = light->getName() == trans->getName();
+
+				bool noMeshSiblings = scene->filterNodesByType(
+					children, repo::core::model::NodeType::MESH).size() == 0;
+
+				bool noTransSiblings = (bool)!scene->filterNodesByType(
+					children, repo::core::model::NodeType::TRANSFORMATION).size() == 1;
+
+				std::vector<repo::core::model::RepoNode*> granTransParents =
+					scene->getParentNodesFiltered(gType,
+					trans, repo::core::model::NodeType::TRANSFORMATION);
+
+				if (sameName && noMeshSiblings && noTransSiblings && granTransParents.size() == 1)
+				{
+					repo::core::model::TransformationNode *granTrans =
+						dynamic_cast<repo::core::model::TransformationNode*>(granTransParents[0]);
+
+					if (granTrans)
+					{
+						repoUUID granSharedID = granTrans->getSharedID();
+						//Disconnect grandparent from parent
+						scene->abandonChild(gType,
+							granSharedID, trans, true, false);
+						for (repo::core::model::RepoNode *node : children)
+						{
+							//Put all children of trans node to granTrans
+							if (node)
+							{
+								scene->abandonChild(gType,
+									parentSharedID, node, false, true);
+								if (!isIdentity && node->positionDependant()){
+									//Parent is not the identity matrix, we need to reapply the transformation if
+									//the node is position dependant
+									node->swap(node->cloneAndApplyTransformation(trans->getTransMatrix(false)));
+								}
+
+								//metadata should be assigned under the mesh
+								scene->addInheritance(gType,
+									granTrans, node, false);
+							}
+						}
+
+						//change mesh name
+						repo::core::model::MeshNode *newLight =
+							new repo::core::model::MeshNode(light->cloneAndChangeName(trans->getName(), false));
+
+						scene->modifyNode(gType, light, newLight);
+
+						//remove parent from the scene.
+						scene->removeNode(gType, parentSharedID);
+						delete newLight;
 					}
 					else
 					{
