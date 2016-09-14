@@ -204,7 +204,8 @@ namespace repo{
 					const RepoNodeSet &meshes,
 					const RepoNodeSet &materials,
 					const RepoNodeSet &textures,
-					const RepoNodeSet &transformations);
+					const RepoNodeSet &transformations,
+					const RepoNodeSet &lights);
 
 				/**
 				* Clears the contents within the Stash (if there is one)

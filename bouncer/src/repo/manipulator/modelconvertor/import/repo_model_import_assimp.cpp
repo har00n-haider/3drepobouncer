@@ -955,7 +955,7 @@ repo::core::model::RepoScene* AssimpModelImport::convertAiSceneToRepoScene()
 				std::string cameraName(assimpScene->mCameras[i]->mName.data);
 				repo::core::model::RepoNode* camera = createCameraRepoNode(assimpScene->mCameras[i]);
 				if (!camera)
-					repoError << "Unable to construct mesh node in Assimp Model Convertor!";
+					repoError << "Unable to construct camera node in Assimp Model Convertor!";
 				else
 				{
 					cameras.insert(camera);

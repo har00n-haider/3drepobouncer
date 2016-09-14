@@ -471,7 +471,7 @@ bool MultipartOptimizer::generateMultipartScene(repo::core::model::RepoScene *sc
 		//Sort the meshes into 3 different grouping
 		sortMeshes(scene, meshes, normalMeshes, transparentMeshes, texturedMeshes);
 
-		repo::core::model::RepoNodeSet mergedMeshes, materials, trans, textures, dummy;
+		repo::core::model::RepoNodeSet mergedMeshes, materials, trans, textures, lights, dummy;
 
 		auto rootNode = new repo::core::model::TransformationNode(repo::core::model::RepoBSONFactory::makeTransformationNode());
 		trans.insert(rootNode);
@@ -530,7 +530,39 @@ bool MultipartOptimizer::generateMultipartScene(repo::core::model::RepoScene *sc
 				textures.insert(new repo::core::model::TextureNode(texture->cloneAndAddFields(&changeBSON, false)));
 			}
 
-			scene->addStashGraph(dummy, mergedMeshes, materials, textures, trans);
+			for (const auto &lightNode : scene->getAllLights(defaultGraph))
+			{
+				//create new instance with new UUID to avoid X contamination
+				auto light = static_cast<repo::core::model::LightNode*>(lightNode);
+				repo::core::model::RepoBSONBuilder builder;
+				builder.append(REPO_NODE_LABEL_ID, generateUUID());
+				std::vector<repoUUID> lightparents = { rootID };
+				builder.appendArray(REPO_NODE_LABEL_PARENTS, lightparents);
+				auto parents = light->getParentIDs();
+				repo::core::model::RepoNode* currentNode = light;
+				repo::core::model::LightNode currentLight = *light;
+				while (parents.size())
+				{
+					currentNode = scene->getNodeBySharedID(repo::core::model::RepoScene::GraphType::DEFAULT, parents[0]);
+					auto trans = dynamic_cast<repo::core::model::TransformationNode*>(currentNode);
+					if (trans)
+					{
+						currentLight = currentLight.cloneAndApplyTransformation(trans->getTransMatrix(false));
+					}
+					else
+					{
+						repoError << "Unexpected node type: ancestors of light node should always be a transformation";
+					}
+					parents = currentNode->getParentIDs();
+					if (parents.size() > 1)
+						repoError << "Light is instanced. This is unexpected!";
+				}
+
+				auto changeBSON = builder.obj();
+				lights.insert(new repo::core::model::LightNode(currentLight.cloneAndAddFields(&changeBSON, false)));
+			}
+
+			scene->addStashGraph(dummy, mergedMeshes, materials, textures, trans, lights);
 		}
 		else
 		{
@@ -799,7 +831,7 @@ void MultipartOptimizer::sortMeshes(
 			texturedMeshes[mFormat][texID].back().insert(mesh->getUniqueID());
 			texturedFCount[mFormat][texID] += mesh->getFaces().size();
 #endif
-			}
+		}
 		else
 		{
 			//no texture, check if it is transparent
@@ -823,5 +855,5 @@ void MultipartOptimizer::sortMeshes(
 			meshMap[mFormat].back().insert(mesh->getUniqueID());
 			meshFCount[mFormat] += mesh->getFaces().size();
 		}
-		}
 	}
+}

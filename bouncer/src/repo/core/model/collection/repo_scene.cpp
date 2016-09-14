@@ -445,10 +445,11 @@ void RepoScene::addStashGraph(
 	const RepoNodeSet &meshes,
 	const RepoNodeSet &materials,
 	const RepoNodeSet &textures,
-	const RepoNodeSet &transformations)
+	const RepoNodeSet &transformations,
+	const RepoNodeSet &lights)
 {
-	populateAndUpdate(GraphType::OPTIMIZED, cameras, meshes, materials, RepoNodeSet(), RepoNodeSet(),
-		textures, transformations, RepoNodeSet(), RepoNodeSet(), RepoNodeSet());
+	populateAndUpdate(GraphType::OPTIMIZED, cameras, meshes, materials, RepoNodeSet(),
+		textures, transformations, RepoNodeSet(), RepoNodeSet(), lights, RepoNodeSet());
 }
 
 void RepoScene::clearStash()
