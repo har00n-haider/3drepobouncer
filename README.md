@@ -24,6 +24,9 @@ Your pull requests should:
 5. Rebase your branch against [upstream's master](https://help.github.com/articles/merging-an-upstream-repository-into-your-fork/) so that we don't pull redundant commits
 6. Sign our [3D Repo Individual CLA](https://gist.github.com/jozefdobos/e177af804c9bcd217b73) or if you are representing a legal entity, sign the [3D Repo Entity CLA](https://gist.github.com/jozefdobos/c7c4c1c18cfb211c45d2)
 
+## API Documentation
+Doxygen documentation can be found [here](http://3drepo.github.io/3drepobouncer/doc/html/)
+
 Dependencies
 ------------
 3DRepoBouncer relies on the following libraries:
