@@ -90,7 +90,18 @@ repo_vector_t LightNode::getDirection() const
 	return vec;
 }
 
-std::string LightNode::getTypeAsString(
+LightNode::LightType LightNode::getLightType() const
+{
+	auto lightType = getStringField(REPO_LIGHT_NODE_LABEL_LIGHT_TYPE);
+	if (lightType == "ambient") return LightNode::LightType::AMBIENT;
+	if (lightType == "directional") return LightNode::LightType::DIRECTIONAL;
+	if (lightType == "spot") return LightNode::LightType::SPOT;
+	if (lightType == "point") return LightNode::LightType::POINT;
+	repoWarning << "Unknown light type : " << lightType;
+	return LightNode::LightType::UNKNOWN;
+}
+
+std::string LightNode::getLightTypeAsString(
 	const LightNode::LightType &type)
 {
 	std::string res;
@@ -111,4 +122,127 @@ std::string LightNode::getTypeAsString(
 		break;
 	}
 	return res;
+}
+
+repo_color3d_t LightNode::getAmbientColor() const
+{
+	repo_color3d_t color;
+	auto am = getFloatArray(REPO_LIGHT_NODE_LABEL_COLOR_AMBIENT);
+	if (am.size() >= 3)
+	{
+		color = { am[0], am[1], am[2] };
+	}
+	return color;
+}
+
+repo_color3d_t LightNode::getDiffuseColor() const
+{
+	repo_color3d_t color;
+	auto di = getFloatArray(REPO_LIGHT_NODE_LABEL_COLOR_DIFFUSE);
+	if (di.size() >= 3)
+	{
+		color = { di[0], di[1], di[2] };
+	}
+	return color;
+}
+
+repo_color3d_t LightNode::getSpecularColor() const
+{
+	repo_color3d_t color;
+	auto sp = getFloatArray(REPO_LIGHT_NODE_LABEL_COLOR_SPECULAR);
+	if (sp.size() >= 3)
+	{
+		color = { sp[0], sp[1], sp[2] };
+	}
+	return color;
+}
+
+float LightNode::getConstantAttenuation() const
+{
+	float res;
+	if (hasField(REPO_LIGHT_NODE_LABEL_ATTEN_CONSTANT))
+	{
+		auto att = getField(REPO_LIGHT_NODE_LABEL_ATTEN_CONSTANT);
+		if (att.type() == repo::core::model::ElementType::DOUBLE)
+			res = att.Double();
+		else
+		{
+			repoError << "Unable to retrieve " << REPO_LIGHT_NODE_LABEL_ATTEN_CONSTANT << ": Unexpected type";
+		}
+	}
+
+	return res;
+}
+
+float LightNode::getLinearAttenuation() const
+{
+	float res;
+	if (hasField(REPO_LIGHT_NODE_LABEL_ATTEN_LINEAR))
+	{
+		auto att = getField(REPO_LIGHT_NODE_LABEL_ATTEN_LINEAR);
+		if (att.type() == repo::core::model::ElementType::DOUBLE)
+			res = att.Double();
+		else
+		{
+			repoError << "Unable to retrieve " << REPO_LIGHT_NODE_LABEL_ATTEN_LINEAR << ": Unexpected type";
+		}
+	}
+
+	return res;
+}
+
+float LightNode::getQuadraticAttenuation() const
+{
+	float res;
+	if (hasField(REPO_LIGHT_NODE_LABEL_ATTEN_QUADRATIC))
+	{
+		auto att = getField(REPO_LIGHT_NODE_LABEL_ATTEN_QUADRATIC);
+		if (att.type() == repo::core::model::ElementType::DOUBLE)
+			res = att.Double();
+		else
+		{
+			repoError << "Unable to retrieve " << REPO_LIGHT_NODE_LABEL_ATTEN_QUADRATIC << ": Unexpected type";
+		}
+	}
+
+	return res;
+}
+
+float LightNode::getInnerConeAngle() const
+{
+	float res;
+	if (hasField(REPO_LIGHT_NODE_LABEL_CONE_ANGLE_INNER))
+	{
+		auto att = getField(REPO_LIGHT_NODE_LABEL_CONE_ANGLE_INNER);
+		if (att.type() == repo::core::model::ElementType::DOUBLE)
+			res = att.Double();
+		else
+		{
+			repoError << "Unable to retrieve " << REPO_LIGHT_NODE_LABEL_CONE_ANGLE_INNER << ": Unexpected type";
+		}
+	}
+
+	return res;
+}
+
+float LightNode::getOuterConeAngle() const
+{
+	float res;
+	if (hasField(REPO_LIGHT_NODE_LABEL_CONE_ANGLE_OUTER))
+	{
+		auto att = getField(REPO_LIGHT_NODE_LABEL_CONE_ANGLE_OUTER);
+		if (att.type() == repo::core::model::ElementType::DOUBLE)
+			res = att.Double();
+		else
+		{
+			repoError << "Unable to retrieve " << REPO_LIGHT_NODE_LABEL_CONE_ANGLE_OUTER << ": Unexpected type";
+		}
+	}
+
+	return res;
+}
+
+float LightNode::getSpotExponent() const
+{
+	return 1. - (getInnerConeAngle() / getOuterConeAngle());
 }

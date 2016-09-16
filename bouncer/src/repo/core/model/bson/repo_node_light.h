@@ -106,11 +106,71 @@ namespace repo {
 				virtual bool positionDependant() { return true; }
 
 				/**
+				* Get the type of the node as enum
+				* @return returns the type of light as enum
+				*/
+				virtual LightNode::LightType getLightType() const;
+
+				/**
+				* Get ambient colour from the light
+				* @return returns ambient color (r,g,b)
+				*/
+				virtual repo_color3d_t getAmbientColor() const;
+
+				/**
+				* Get value of constant attenuation
+				* @return return constant attenuation as a float
+				*/
+				float getConstantAttenuation() const;
+
+				/**
+				* Get value of linear attenuation
+				* @return return linear attenuation as a float
+				*/
+				float getLinearAttenuation() const;
+
+				/**
+				* Get value of quadratic attenuation
+				* @return return quadratic attenuation as a float
+				*/
+				float getQuadraticAttenuation() const;
+
+				/**
+				* Get diffuse colour from the light
+				* @return returns ambient color (r,g,b)
+				*/
+				virtual repo_color3d_t getDiffuseColor() const;
+
+				/**
+				* Get specular colour from the light
+				* @return returns ambient color (r,g,b)
+				*/
+				virtual repo_color3d_t getSpecularColor() const;
+
+				/**
+				* Get inner cone angle (radians)
+				* @return returns the angle of the inner cone of a spot light, in radians
+				*/
+				virtual float getInnerConeAngle() const;
+
+				/**
+				* Get outer cone angle (radians)
+				* @return returns the angle of the outer cone of a spot light, in radians
+				*/
+				virtual float getOuterConeAngle() const;
+
+				/**
+				* Get the exponent value for spot lights
+				* @return returns the spot exponent
+				*/
+				virtual float getSpotExponent() const;
+
+				/**
 				* Return a string of the light type given the type as a enum value
 				* @param type type as enum
 				* @return returns string value of the light type
 				*/
-				static std::string getTypeAsString(const LightNode::LightType &type);
+				static std::string getLightTypeAsString(const LightNode::LightType &type);
 
 				/*
 				*	------------- Delusional modifiers --------------

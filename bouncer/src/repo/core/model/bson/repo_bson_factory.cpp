@@ -143,7 +143,7 @@ LightNode RepoBSONFactory::makeLightNode(
 	auto defaults = appendDefaults(REPO_NODE_TYPE_LIGHT, apiLevel, generateUUID(), name);
 	builder.appendElements(defaults);
 
-	builder << REPO_LIGHT_NODE_LABEL_LIGHT_TYPE << LightNode::getTypeAsString(type);
+	builder << REPO_LIGHT_NODE_LABEL_LIGHT_TYPE << LightNode::getLightTypeAsString(type);
 	builder.append(REPO_LIGHT_NODE_LABEL_POSITION, position);
 	builder.append(REPO_LIGHT_NODE_LABEL_DIRECTION, direction);
 	builder.append(REPO_LIGHT_NODE_LABEL_COLOR_AMBIENT, ambientColor);
