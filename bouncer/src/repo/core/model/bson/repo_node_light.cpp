@@ -47,7 +47,9 @@ RepoNode LightNode::cloneAndApplyTransformation(
 	RepoBSONBuilder builder;
 	if (hasField(REPO_LIGHT_NODE_LABEL_DIRECTION))
 	{
-		builder.append(REPO_LIGHT_NODE_LABEL_DIRECTION, multiplyMatVec(matrix, getDirection()));
+		auto dir = multiplyMatVec(matrix, getDirection());
+		//normalize(dir);
+		builder.append(REPO_LIGHT_NODE_LABEL_DIRECTION, dir);
 	}
 
 	if (hasField(REPO_LIGHT_NODE_LABEL_POSITION))
@@ -92,7 +94,7 @@ repo_vector_t LightNode::getDirection() const
 
 LightNode::LightType LightNode::getLightType() const
 {
-	auto lightType = getStringField(REPO_LIGHT_NODE_LABEL_LIGHT_TYPE);
+	std::string lightType = getStringField(REPO_LIGHT_NODE_LABEL_LIGHT_TYPE);
 	if (lightType == "ambient") return LightNode::LightType::AMBIENT;
 	if (lightType == "directional") return LightNode::LightType::DIRECTIONAL;
 	if (lightType == "spot") return LightNode::LightType::SPOT;
