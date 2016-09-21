@@ -555,8 +555,8 @@ RepoIssue RepoBSONFactory::makeRepoIssue(
 
 	if (!desc.empty())
 		builder << REPO_ISSUE_LABEL_DESC << desc;
-
-	builder << REPO_ISSUE_LABEL_NUMBER << issueNumber;
+	long long int issueN = issueNumber;
+	builder << REPO_ISSUE_LABEL_NUMBER << issueN;
 
 	builder << REPO_ISSUE_LABEL_CREATED << (double)std::time(nullptr) * 1000.;
 
