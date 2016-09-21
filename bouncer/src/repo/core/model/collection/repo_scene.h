@@ -238,6 +238,15 @@ namespace repo{
 					std::string &errMsg);
 
 				/**
+				* Export the camera nodes within the scene graph as issues
+				* and commit them into the database
+				* @param handler database handler
+				* @param errMsg error message
+				*/
+				bool exportAndCommitCameraAsIssues(
+					repo::core::handler::AbstractDatabaseHandler *handler,
+					std::string &errMsg);
+				/**
 				* Get the branch ID of this scene graph
 				* @return returns the branch ID of this scene
 				*/

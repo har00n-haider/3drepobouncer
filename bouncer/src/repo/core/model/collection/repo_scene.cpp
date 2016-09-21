@@ -808,6 +808,40 @@ bool RepoScene::commitStash(
 	}
 }
 
+bool RepoScene::exportAndCommitCameraAsIssues(
+	repo::core::handler::AbstractDatabaseHandler *handler,
+	std::string &errMsg)
+{
+	if (!isRevisioned())
+	{
+		errMsg += "Cannot export issues as scene is not revisioned!";
+		return false;
+	}
+
+	const repoGraphInstance g = graph;
+	const auto revID = getRevisionID();
+	const auto owner = getOwner();
+	const auto dbName = getDatabaseName();
+	const auto issueCol = getProjectName() + "." + issuesExt;
+	bool success = true;
+	for (const auto &cam : g.cameras)
+	{
+		auto camNode = dynamic_cast<const CameraNode*>(cam);
+		if (camNode)
+		{
+			auto issue = RepoBSONFactory::makeRepoIssue(revID, cam->getName(), "Viewpoint", camNode, owner, "Viewpoint automatically imported from original file");
+			success &= handler->insertDocument(dbName, issueCol, issue, errMsg);
+		}
+		else
+		{
+			errMsg = "Failed to read camera node.";
+			success = false;
+		}
+	}
+
+	return success;
+}
+
 std::vector<RepoNode*>
 RepoScene::getChildrenAsNodes(
 const GraphType &gType,
@@ -1458,7 +1492,6 @@ void RepoScene::reorientateDirectXModel()
 				worldOffset[2] = -worldOffset[1];
 				worldOffset[1] = temp;
 			}
-			
 		}
 		else
 		{

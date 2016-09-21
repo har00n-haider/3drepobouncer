@@ -530,6 +530,64 @@ MeshNode RepoBSONFactory::makeMeshNode(
 	return MeshNode(builder.obj(), binMapping);
 }
 
+RepoIssue RepoBSONFactory::makeRepoIssue(
+	const repoUUID &revID,
+	const std::string &name,
+	const std::string &type,
+	const repo::core::model::CameraNode *viewpoint,
+	const std::string &owner,
+	const std::string &desc)
+{
+	RepoBSONBuilder builder;
+
+	builder.append(REPO_LABEL_ID, generateUUID());
+	builder.append(REPO_ISSUE_LABEL_REV_ID, revID);
+
+	builder << REPO_ISSUE_LABEL_NAME << name;
+
+	if (!type.empty())
+		builder << REPO_ISSUE_LABEL_TOPIC << type;
+
+	if (!owner.empty())
+		builder << REPO_ISSUE_LABEL_OWNER << owner;
+
+	if (!desc.empty())
+		builder << REPO_ISSUE_LABEL_DESC << desc;
+
+	if (viewpoint)
+	{
+		RepoBSONBuilder vpBuilder;
+
+		repo_vector_t lookAt = viewpoint->getLookAt();
+		repo_vector_t up = viewpoint->getUp();
+		repo_vector_t forward = { -lookAt.x, -lookAt.y, -lookAt.z };
+		normalize(forward);
+		normalize(up);
+		repo_vector_t right = crossProduct(up, forward);
+
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_GUID, generateUUID());
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_UP, viewpoint->getUp());
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_POS, viewpoint->getPosition());
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_LOOKAT, viewpoint->getLookAt());
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_VIEWDIR, forward);
+
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_RIGHT, right);
+
+		vpBuilder << REPO_ISSUE_LABEL_VP_FOV << viewpoint->getFieldOfView();
+
+		vpBuilder << REPO_ISSUE_LABEL_VP_AR << viewpoint->getAspectRatio();
+
+		vpBuilder << REPO_ISSUE_LABEL_VP_FAR << viewpoint->getFarClippingPlane();
+		vpBuilder << REPO_ISSUE_LABEL_VP_NEAR << viewpoint->getNearClippingPlane();
+
+		std::vector<RepoBSON> vps;
+		vps.push_back(vpBuilder.obj());
+		builder.appendArray(REPO_ISSUE_LABEL_VIEWPOINTS, vps);
+	}
+
+	return RepoIssue(builder.obj());
+}
+
 RepoProjectSettings RepoBSONFactory::makeRepoProjectSettings(
 	const std::string &uniqueProjectName,
 	const std::string &owner,
