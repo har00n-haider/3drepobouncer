@@ -19,6 +19,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
+#include <ctime>
 
 #include "repo_bson_builder.h"
 #include "../../../lib/repo_log.h"
@@ -553,6 +554,8 @@ RepoIssue RepoBSONFactory::makeRepoIssue(
 
 	if (!desc.empty())
 		builder << REPO_ISSUE_LABEL_DESC << desc;
+
+	builder << REPO_ISSUE_LABEL_CREATED << (double)std::time(nullptr) * 1000.;
 
 	if (viewpoint)
 	{

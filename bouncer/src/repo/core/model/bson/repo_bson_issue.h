@@ -45,6 +45,7 @@
 #define REPO_ISSUE_LABEL_VP_AR "aspect_ratio"
 #define REPO_ISSUE_LABEL_VP_FAR "far"
 #define REPO_ISSUE_LABEL_VP_NEAR "near"
+#define REPO_ISSUE_LABEL_CREATED "created"
 
 namespace repo {
 	namespace core {
