@@ -35,6 +35,7 @@
 #define REPO_ISSUE_LABEL_VIEWPOINTS "viewpoints"
 #define REPO_ISSUE_LABEL_OWNER "owner"
 #define REPO_ISSUE_LABEL_DESC "desc"
+#define REPO_ISSUE_LABEL_NUMBER "number"
 #define REPO_ISSUE_LABEL_VP_GUID "guid"
 #define REPO_ISSUE_LABEL_VP_UP "up"
 #define REPO_ISSUE_LABEL_VP_POS "position"
@@ -59,6 +60,12 @@ namespace repo {
 				RepoIssue(RepoBSON bson) : RepoBSON(bson){}
 
 				~RepoIssue();
+
+				/**
+				* get the issue number of this issue
+				* @return returns issue number. 0 if missing
+				*/
+				int64_t getIssueNumber() const;
 			};
 		}// end namespace model
 	} // end namespace core

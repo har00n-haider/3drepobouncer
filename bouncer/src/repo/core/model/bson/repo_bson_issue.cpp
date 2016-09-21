@@ -31,3 +31,14 @@ RepoIssue::RepoIssue() : RepoBSON()
 RepoIssue::~RepoIssue()
 {
 }
+
+int64_t RepoIssue::getIssueNumber() const
+{
+	int64_t num = 0;
+	if (hasField(REPO_ISSUE_LABEL_NUMBER))
+	{
+		num = getField(REPO_ISSUE_LABEL_NUMBER).Long();
+	}
+
+	return num;
+}

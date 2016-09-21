@@ -56,6 +56,7 @@ namespace repo {
 				* @param desc desc of the issue
 				*/
 				static RepoIssue makeRepoIssue(
+					const int64_t &issueNumber,
 					const repoUUID &revID,
 					const std::string &name,
 					const std::string &type,

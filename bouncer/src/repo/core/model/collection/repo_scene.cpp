@@ -824,12 +824,21 @@ bool RepoScene::exportAndCommitCameraAsIssues(
 	const auto dbName = getDatabaseName();
 	const auto issueCol = getProjectName() + "." + issuesExt;
 	bool success = true;
+	//find issue number to use
+	RepoIssue lastIssue(handler->findOneByCriteria(dbName, issueCol, RepoBSON(), REPO_ISSUE_LABEL_NUMBER));
+
+	int nextIndex = 0;
+	if (!lastIssue.isEmpty())
+	{
+		nextIndex = lastIssue.getIssueNumber() + 1;
+	}
+
 	for (const auto &cam : g.cameras)
 	{
 		auto camNode = dynamic_cast<const CameraNode*>(cam);
 		if (camNode)
 		{
-			auto issue = RepoBSONFactory::makeRepoIssue(revID, cam->getName(), "Viewpoint", camNode, owner, "Viewpoint automatically imported from original file");
+			auto issue = RepoBSONFactory::makeRepoIssue(nextIndex++, revID, cam->getName(), "Viewpoint", camNode, owner, "Viewpoint automatically imported from original file");
 			success &= handler->insertDocument(dbName, issueCol, issue, errMsg);
 		}
 		else

@@ -428,27 +428,24 @@ repo::core::model::RepoBSON MongoDatabaseHandler::findOneByCriteria(
 {
 	repo::core::model::RepoBSON data;
 
-	if (!criteria.isEmpty())
-	{
-		mongo::DBClientBase *worker;
-		try{
-			uint64_t retrieved = 0;
-			worker = workerPool->getWorker();
-			auto query = mongo::Query(criteria);
-			if (!sortField.empty())
-				query = query.sort(sortField, -1);
+	mongo::DBClientBase *worker;
+	try{
+		uint64_t retrieved = 0;
+		worker = workerPool->getWorker();
+		auto query = mongo::Query(criteria);
+		if (!sortField.empty())
+			query = query.sort(sortField, -1);
 
-			data = repo::core::model::RepoBSON(worker->findOne(
-				database + "." + collection,
-				query));
-		}
-		catch (mongo::DBException& e)
-		{
-			repoError << "Error in MongoDatabaseHandler::findOneByCriteria: " << e.what();
-		}
-
-		workerPool->returnWorker(worker);
+		data = repo::core::model::RepoBSON(worker->findOne(
+			database + "." + collection,
+			query));
 	}
+	catch (mongo::DBException& e)
+	{
+		repoError << "Error in MongoDatabaseHandler::findOneByCriteria: " << e.what();
+	}
+
+	workerPool->returnWorker(worker);
 
 	return data;
 }

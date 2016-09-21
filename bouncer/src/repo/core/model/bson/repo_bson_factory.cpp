@@ -532,6 +532,7 @@ MeshNode RepoBSONFactory::makeMeshNode(
 }
 
 RepoIssue RepoBSONFactory::makeRepoIssue(
+	const int64_t &issueNumber,
 	const repoUUID &revID,
 	const std::string &name,
 	const std::string &type,
@@ -554,6 +555,8 @@ RepoIssue RepoBSONFactory::makeRepoIssue(
 
 	if (!desc.empty())
 		builder << REPO_ISSUE_LABEL_DESC << desc;
+
+	builder << REPO_ISSUE_LABEL_NUMBER << issueNumber;
 
 	builder << REPO_ISSUE_LABEL_CREATED << (double)std::time(nullptr) * 1000.;
 
