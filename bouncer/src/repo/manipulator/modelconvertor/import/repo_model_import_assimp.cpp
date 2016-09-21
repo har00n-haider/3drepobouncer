@@ -880,7 +880,7 @@ repo::core::model::RepoScene* AssimpModelImport::convertAiSceneToRepoScene()
 		*/
 
 		repoInfo << "Constructing Mesh Nodes...";
-		if (sceneBbox.size())
+		if (/*sceneBbox.size()*/false)
 			repoInfo << "Scene offset : {" << sceneBbox[0][0] << "," << sceneBbox[0][1] << "," << sceneBbox[0][2] << "}";
 		else
 		{
