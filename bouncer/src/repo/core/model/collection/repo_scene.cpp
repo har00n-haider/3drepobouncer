@@ -838,7 +838,26 @@ bool RepoScene::exportAndCommitCameraAsIssues(
 		auto camNode = dynamic_cast<const CameraNode*>(cam);
 		if (camNode)
 		{
-			auto issue = RepoBSONFactory::makeRepoIssue(nextIndex++, revID, cam->getName(), "Viewpoint", camNode, owner, "Viewpoint automatically imported from original file");
+			auto modifiedCam = *camNode;
+			auto parent = modifiedCam.getParentIDs();
+			RepoNode *currentNode;
+			while (parent.size())
+			{
+				currentNode = getNodeBySharedID(GraphType::DEFAULT, parent[0]);
+				if (currentNode->getTypeAsEnum() == NodeType::TRANSFORMATION)
+				{
+					auto transNode = dynamic_cast<TransformationNode*>(currentNode);
+					modifiedCam = modifiedCam.cloneAndApplyTransformation(transNode->getTransMatrix(false));
+				}
+
+				parent = currentNode->getParentIDs();
+				if (parent.size() > 1)
+				{
+					repoError << "Camera node has multiple parents/grandparents, this is not expected!";
+				}
+			}
+
+			auto issue = RepoBSONFactory::makeRepoIssue(nextIndex++, revID, cam->getName(), "Viewpoint", &modifiedCam, owner, "Viewpoint automatically imported from original file");
 			success &= handler->insertDocument(dbName, issueCol, issue, errMsg);
 		}
 		else

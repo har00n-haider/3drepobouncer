@@ -226,7 +226,7 @@ repo::core::model::CameraNode* AssimpModelImport::createCameraRepoNode(
 			assimpCamera->mClipPlaneNear,
 			assimpCamera->mHorizontalFOV,
 			{ (float)(assimpCamera->mLookAt.x - offset[0]), (float)(assimpCamera->mLookAt.y - offset[1]), (float)(assimpCamera->mLookAt.z - offset[2]) },
-			{ (float)(assimpCamera->mPosition.x), (float)(assimpCamera->mPosition.y - offset[1]), (float)(assimpCamera->mPosition.z - offset[2]) },
+			{ (float)(assimpCamera->mPosition.x - offset[0]), (float)(assimpCamera->mPosition.y - offset[1]), (float)(assimpCamera->mPosition.z - offset[2]) },
 			{ (float)(assimpCamera->mUp.x - offset[0]), (float)(assimpCamera->mUp.y - offset[1]), (float)(assimpCamera->mUp.z - offset[2]) },
 			cameraName
 			));
@@ -880,7 +880,7 @@ repo::core::model::RepoScene* AssimpModelImport::convertAiSceneToRepoScene()
 		*/
 
 		repoInfo << "Constructing Mesh Nodes...";
-		if (/*sceneBbox.size()*/false)
+		if (sceneBbox.size())
 			repoInfo << "Scene offset : {" << sceneBbox[0][0] << "," << sceneBbox[0][1] << "," << sceneBbox[0][2] << "}";
 		else
 		{
