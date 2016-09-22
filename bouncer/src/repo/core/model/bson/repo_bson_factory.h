@@ -62,7 +62,9 @@ namespace repo {
 					const std::string &type,
 					const repo::core::model::CameraNode *viewpoint,
 					const std::string &owner,
-					const std::string &desc);
+					const std::string &desc,
+					const std::string &priority = "none",
+					const std::string &status = "open");
 
 				/**
 				* Create a project setting BSON

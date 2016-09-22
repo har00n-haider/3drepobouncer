@@ -538,7 +538,9 @@ RepoIssue RepoBSONFactory::makeRepoIssue(
 	const std::string &type,
 	const repo::core::model::CameraNode *viewpoint,
 	const std::string &owner,
-	const std::string &desc)
+	const std::string &desc,
+	const std::string &priority,
+	const std::string &status)
 {
 	RepoBSONBuilder builder;
 
@@ -557,6 +559,9 @@ RepoIssue RepoBSONFactory::makeRepoIssue(
 		builder << REPO_ISSUE_LABEL_DESC << desc;
 	long long int issueN = issueNumber;
 	builder << REPO_ISSUE_LABEL_NUMBER << issueN;
+
+	builder << REPO_ISSUE_LABEL_PRIORITY << priority;
+	builder << REPO_ISSUE_LABEL_STATUS << status;
 
 	builder << REPO_ISSUE_LABEL_CREATED << (double)std::time(nullptr) * 1000.;
 
