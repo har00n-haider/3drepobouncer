@@ -253,6 +253,12 @@ bool RepoManipulator::commitScene(
 			else
 				repoError << "failed to commit selection tree";
 		}
+
+		repoInfo << "Exporting Cameras as issues...";
+		if (!exportCamerasIntoIssues(databaseAd, cred, scene, msg))
+		{
+			repoInfo << "Failed to export cameras: " << msg;
+		}
 	}
 	else
 	{
@@ -366,6 +372,27 @@ bool RepoManipulator::dropDatabase(
 		success = handler->dropDatabase(databaseName, errMsg);
 	else
 		errMsg = "Unable to locate database handler for " + databaseAd + ". Try reauthenticating.";
+
+	return success;
+}
+
+bool RepoManipulator::exportCamerasIntoIssues
+(
+const std::string                      &databaseAd,
+const repo::core::model::RepoBSON 	   *cred,
+repo::core::model::RepoScene           *scene,
+std::string                            &errMsg
+)
+{
+	repo::core::handler::AbstractDatabaseHandler* handler =
+		repo::core::handler::MongoDatabaseHandler::getHandler(databaseAd);
+	bool success = false;
+	if (handler)
+	{
+		success = scene->exportAndCommitCameraAsIssues(handler, errMsg);
+	}
+	else
+		errMsg += "Unable to locate database handler for " + databaseAd + ". Try reauthenticating.";
 
 	return success;
 }

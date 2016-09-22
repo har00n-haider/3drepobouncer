@@ -810,6 +810,68 @@ bool RepoScene::commitStash(
 	}
 }
 
+bool RepoScene::exportAndCommitCameraAsIssues(
+	repo::core::handler::AbstractDatabaseHandler *handler,
+	std::string &errMsg)
+{
+	if (!isRevisioned())
+	{
+		errMsg += "Cannot export issues as scene is not revisioned!";
+		return false;
+	}
+
+	const repoGraphInstance g = graph;
+	const auto revID = getRevisionID();
+	const auto owner = getOwner();
+	const auto dbName = getDatabaseName();
+	const auto issueCol = getProjectName() + "." + issuesExt;
+	bool success = true;
+	//find issue number to use
+	RepoIssue lastIssue(handler->findOneByCriteria(dbName, issueCol, RepoBSON(), REPO_ISSUE_LABEL_NUMBER));
+
+	int nextIndex = 0;
+	if (!lastIssue.isEmpty())
+	{
+		nextIndex = lastIssue.getIssueNumber() + 1;
+	}
+
+	for (const auto &cam : g.cameras)
+	{
+		auto camNode = dynamic_cast<const CameraNode*>(cam);
+		if (camNode)
+		{
+			auto modifiedCam = *camNode;
+			auto parent = modifiedCam.getParentIDs();
+			RepoNode *currentNode;
+			while (parent.size())
+			{
+				currentNode = getNodeBySharedID(GraphType::DEFAULT, parent[0]);
+				if (currentNode->getTypeAsEnum() == NodeType::TRANSFORMATION)
+				{
+					auto transNode = dynamic_cast<TransformationNode*>(currentNode);
+					modifiedCam = modifiedCam.cloneAndApplyTransformation(transNode->getTransMatrix(false));
+				}
+
+				parent = currentNode->getParentIDs();
+				if (parent.size() > 1)
+				{
+					repoError << "Camera node has multiple parents/grandparents, this is not expected!";
+				}
+			}
+
+			auto issue = RepoBSONFactory::makeRepoIssue(nextIndex++, revID, cam->getName(), "Viewpoint", &modifiedCam, owner, "Viewpoint automatically imported from original file");
+			success &= handler->insertDocument(dbName, issueCol, issue, errMsg);
+		}
+		else
+		{
+			errMsg = "Failed to read camera node.";
+			success = false;
+		}
+	}
+
+	return success;
+}
+
 std::vector<RepoNode*>
 RepoScene::getChildrenAsNodes(
 const GraphType &gType,

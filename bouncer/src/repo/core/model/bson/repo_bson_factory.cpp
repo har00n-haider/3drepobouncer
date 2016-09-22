@@ -19,6 +19,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
+#include <ctime>
 
 #include "repo_bson_builder.h"
 #include "../../../lib/repo_log.h"
@@ -562,6 +563,77 @@ MeshNode RepoBSONFactory::makeMeshNode(
 	}
 
 	return MeshNode(builder.obj(), binMapping);
+}
+
+RepoIssue RepoBSONFactory::makeRepoIssue(
+	const int64_t &issueNumber,
+	const repoUUID &revID,
+	const std::string &name,
+	const std::string &type,
+	const repo::core::model::CameraNode *viewpoint,
+	const std::string &owner,
+	const std::string &desc,
+	const std::string &priority,
+	const std::string &status)
+{
+	RepoBSONBuilder builder;
+
+	builder.append(REPO_LABEL_ID, generateUUID());
+	builder.append(REPO_ISSUE_LABEL_REV_ID, revID);
+
+	builder << REPO_ISSUE_LABEL_NAME << name;
+
+	if (!type.empty())
+		builder << REPO_ISSUE_LABEL_TOPIC << type;
+
+	if (!owner.empty())
+		builder << REPO_ISSUE_LABEL_OWNER << owner;
+
+	if (!desc.empty())
+		builder << REPO_ISSUE_LABEL_DESC << desc;
+	long long int issueN = issueNumber;
+	builder << REPO_ISSUE_LABEL_NUMBER << issueN;
+
+	builder << REPO_ISSUE_LABEL_PRIORITY << priority;
+	builder << REPO_ISSUE_LABEL_STATUS << status;
+
+	builder << REPO_ISSUE_LABEL_CREATED << (double)std::time(nullptr) * 1000.;
+
+	if (viewpoint)
+	{
+		RepoBSONBuilder vpBuilder;
+
+		repo_vector_t lookAt = viewpoint->getLookAt();
+		repo_vector_t pos = viewpoint->getPosition();
+		repo_vector_t up = viewpoint->getUp();
+		repo_vector_t vDir = { lookAt.x - pos.x, (lookAt.y - pos.y), lookAt.z - pos.z };
+
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_GUID, generateUUID());
+		repo_vector_t up2 = { up.x - pos.x, up.y - pos.y, up.z - pos.z };
+		normalize(up2);
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_UP, up2);
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_POS, pos);
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_LOOKAT, viewpoint->getLookAt());
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_VIEWDIR, vDir);
+		repo_vector_t forward = { -lookAt.x, -lookAt.y, -lookAt.z };
+		normalize(forward);
+		normalize(up);
+		repo_vector_t right = crossProduct(up, forward);
+		vpBuilder.append(REPO_ISSUE_LABEL_VP_RIGHT, right);
+
+		vpBuilder << REPO_ISSUE_LABEL_VP_FOV << viewpoint->getFieldOfView();
+
+		vpBuilder << REPO_ISSUE_LABEL_VP_AR << viewpoint->getAspectRatio();
+
+		vpBuilder << REPO_ISSUE_LABEL_VP_FAR << viewpoint->getFarClippingPlane();
+		vpBuilder << REPO_ISSUE_LABEL_VP_NEAR << viewpoint->getNearClippingPlane();
+
+		std::vector<RepoBSON> vps;
+		vps.push_back(vpBuilder.obj());
+		builder.appendArray(REPO_ISSUE_LABEL_VIEWPOINTS, vps);
+	}
+
+	return RepoIssue(builder.obj());
 }
 
 RepoProjectSettings RepoBSONFactory::makeRepoProjectSettings(

@@ -235,6 +235,14 @@ namespace repo{
 				std::string			                          &errMsg
 				);
 
+			bool exportCamerasIntoIssues
+				(
+				const std::string                      &databaseAd,
+				const repo::core::model::RepoBSON 	   *cred,
+				repo::core::model::RepoScene           *scene,
+				std::string                            &errMsg
+				);
+
 			/**
 			* Get a list of all available databases, alphabetically sorted by default.
 			* @param databaseAd mongo database address:port

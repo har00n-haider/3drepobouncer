@@ -23,6 +23,7 @@
 #pragma once
 #include "../repo_node_utils.h"
 
+#include "repo_bson_issue.h"
 #include "repo_bson_project_settings.h"
 #include "repo_bson_role.h"
 #include "repo_bson_role_settings.h"
@@ -45,6 +46,26 @@ namespace repo {
 			class REPO_API_EXPORT RepoBSONFactory
 			{
 			public:
+
+				/**
+				* Create an issue BSON
+				* @param revID revision ID related to the issue
+				* @param name name of the issue
+				* @param type type of issue
+				* @param viewpoint viewpoint related to the issue
+				* @param owner owner of the issue
+				* @param desc desc of the issue
+				*/
+				static RepoIssue makeRepoIssue(
+					const int64_t &issueNumber,
+					const repoUUID &revID,
+					const std::string &name,
+					const std::string &type,
+					const repo::core::model::CameraNode *viewpoint,
+					const std::string &owner,
+					const std::string &desc,
+					const std::string &priority = "none",
+					const std::string &status = "open");
 
 				/**
 				* Create a project setting BSON
