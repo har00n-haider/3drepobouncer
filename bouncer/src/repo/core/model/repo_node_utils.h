@@ -498,7 +498,7 @@ static bool dbNameCheck(const char &c)
 {
 	return c == '/' || c == '\\' || c == '.' || c == ' '
 		|| c == '\"' || c == '$' || c == '*' || c == '<'
-		|| c == '>' || c == ':' || c == '?';
+		|| c == '>' || c == ':' || c == '?' || c == '|';
 }
 
 static bool extNameCheck(const char &c)
@@ -511,11 +511,7 @@ static std::string sanitizeExt(const std::string& name)
 	// http://docs.mongodb.org/manual/reference/limits/#Restriction-on-Collection-Names
 	std::string newName(name);
 	std::replace_if(newName.begin(), newName.end(), extNameCheck, '_');
-	auto strPos = newName.find("system.");
-	if (strPos != std::string::npos)
-	{
-		newName.replace(strPos, sizeof("system."), "");
-	}
+
 	return newName;
 }
 
@@ -524,11 +520,7 @@ static std::string sanitizeName(const std::string& name)
 	// http://docs.mongodb.org/manual/reference/limits/#Restriction-on-Collection-Names
 	std::string newName(name);
 	std::replace_if(newName.begin(), newName.end(), nameCheck, '_');
-	auto strPos = newName.find("system.");
-	if (strPos != std::string::npos)
-	{
-		newName.replace(strPos, sizeof("system."), "");
-	}
+
 	return newName;
 }
 
@@ -539,10 +531,6 @@ static std::string sanitizeDatabaseName(const std::string& name)
 	// Cannot contain any of /\. "$*<>:|?
 	std::string newName(name);
 	std::replace_if(newName.begin(), newName.end(), dbNameCheck, '_');
-	auto strPos = newName.find("system.");
-	if (strPos != std::string::npos)
-	{
-		newName.replace(strPos, sizeof("system."), "");
-	}
+
 	return newName;
 }

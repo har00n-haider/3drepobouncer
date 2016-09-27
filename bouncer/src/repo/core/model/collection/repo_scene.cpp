@@ -499,6 +499,12 @@ bool RepoScene::commit(
 		return false;
 	}
 
+	if (!graph.rootNode)
+	{
+		errMsg = "Cannot commit to the database - Scene is empty!.";
+		return false;
+	}
+
 	if (success &= commitProjectSettings(handler, errMsg, userName))
 	{
 		repoInfo << "Commited project settings, commiting revision...";
@@ -770,6 +776,11 @@ bool RepoScene::commitStash(
 	*/
 
 	repoUUID rev;
+	if (!handler)
+	{
+		errMsg += "Cannot commit stash graph - nullptr to database handler.";
+		return false;
+	}
 	if (!revNode)
 	{
 		errMsg += "Revision node not found, make sure the default scene graph is commited";
@@ -795,6 +806,7 @@ bool RepoScene::commitStash(
 		}
 
 		auto success = commitNodes(handler, nodes, GraphType::OPTIMIZED, errMsg);
+
 		if (success)
 			updateRevisionStatus(handler, repo::core::model::RevisionNode::UploadStatus::COMPLETE);
 
@@ -1417,7 +1429,8 @@ bool RepoScene::populate(
 	//deal with References
 	RepoNodeSet::iterator refIt;
 	//Make sure it is propagated into the repoScene if it exists in revision node
-	worldOffset = getWorldOffset();
+
+	if (g.references.size()) worldOffset.clear();
 	for (const auto &node : g.references)
 	{
 		ReferenceNode* reference = (ReferenceNode*)node;
@@ -1436,13 +1449,9 @@ bool RepoScene::populate(
 		{
 			g.referenceToScene[reference->getSharedID()] = refg;
 			auto refOffset = refg->getWorldOffset();
-			if (refOffset.size() >= worldOffset.size())
+			if (!worldOffset.size())
 			{
-				for (size_t offIdx = 0; offIdx < worldOffset.size(); ++offIdx)
-				{
-					if (worldOffset[offIdx] > refOffset[offIdx])
-						worldOffset[offIdx] = refOffset[offIdx];
-				}
+				worldOffset = refOffset;
 			}
 		}
 		else{
@@ -1454,11 +1463,38 @@ bool RepoScene::populate(
 	for (const auto &node : g.references)
 	{
 		ReferenceNode* reference = (ReferenceNode*)node;
+		auto parent = reference->getParentIDs().at(0);
 		auto refScene = g.referenceToScene[reference->getSharedID()];
 		auto refOffset = refScene->getWorldOffset();
-		std::vector<double> dOffset = { refOffset[0] - worldOffset[0], refOffset[1] - worldOffset[1], refOffset[2] - worldOffset[2] };
-		repoTrace << "delta Offset = [" << dOffset[0] << " , " << dOffset[1] << ", " << dOffset[2] << " ]";
-		refScene->shiftModel(dOffset);
+		//Back to world coord of subProject
+		std::vector<std::vector<float>> backToSubWorld =
+		{ { 1., 0., 0., (float)refOffset[0] },
+		{ 0., 1., 0., (float)refOffset[1] },
+		{ 0., 0., 1., (float)refOffset[2] },
+		{ 0., 0., 0., 1 } };
+		std::vector<std::vector<float>> toFedWorldTrans =
+		{ { 1., 0., 0., (float)-worldOffset[0] },
+		{ 0., 1., 0., (float)-worldOffset[1] },
+		{ 0., 0., 1., (float)-worldOffset[2] },
+		{ 0., 0., 0., 1. } };
+
+		//parent - ref
+		//Becomes: toFedWorld - parent - toSubWorld - ref
+
+		auto parentNode = getNodeBySharedID(GraphType::DEFAULT, parent);
+		auto grandParent = parentNode->getParentIDs().at(0);
+		auto grandParentNode = getNodeBySharedID(GraphType::DEFAULT, grandParent);
+		auto toFedWorld = new TransformationNode(RepoBSONFactory::makeTransformationNode(toFedWorldTrans, "trans", { grandParent }));
+		auto toSubWorld = new TransformationNode(RepoBSONFactory::makeTransformationNode(backToSubWorld, "trans", { parent }));
+		std::vector<RepoNode*> newNodes;
+		newNodes.push_back(toFedWorld);
+		newNodes.push_back(toSubWorld);
+		addNodes(newNodes);
+		addInheritance(GraphType::DEFAULT, toSubWorld, reference);
+		addInheritance(GraphType::DEFAULT, toFedWorld, parentNode);
+		abandonChild(GraphType::DEFAULT, grandParent, parentNode);
+		abandonChild(GraphType::DEFAULT, parent, reference);
+		newModified.clear(); //We're still loading the scene, there shouldn't be anything here anyway.
 	}
 
 	return success;
