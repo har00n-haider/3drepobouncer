@@ -869,6 +869,17 @@ bool RepoScene::exportAndCommitCameraAsIssues(
 				}
 			}
 
+			//shift it back to the correct place
+			if (worldOffset.size())
+			{
+				std::vector<float> transMat =
+				{ 1, 0, 0, (float)worldOffset[0],
+				0, 1, 0, (float)worldOffset[1],
+				0, 0, 1, (float)worldOffset[2],
+				0, 0, 0, 1 };
+				modifiedCam = modifiedCam.cloneAndApplyTransformation(transMat);
+			}
+
 			auto issue = RepoBSONFactory::makeRepoIssue(nextIndex++, revID, cam->getName(), "Viewpoint", &modifiedCam, owner, "Viewpoint automatically imported from original file");
 			success &= handler->insertDocument(dbName, issueCol, issue, errMsg);
 		}
