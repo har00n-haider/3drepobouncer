@@ -376,8 +376,9 @@ bool SRCModelExport::addMeshToExport(
 
 	size_t uvWritePosition = bufPos;
 	size_t nSubMeshes = mapping.size();
+	bool singleMesh = nSubMeshes == 1;
 
-	std::string meshId = UUIDtoString(mesh.getUniqueID());
+	std::string meshId = singleMesh ? UUIDtoString(mapping[0].mesh_id) : UUIDtoString(mesh.getUniqueID());
 
 	repo::lib::PropertyTree tree;
 	size_t lastV = 0, lastF = 0;
@@ -414,7 +415,8 @@ bool SRCModelExport::addMeshToExport(
 
 		std::string idMapID = SRC_PREFIX_IDMAP + meshIDX;
 
-		std::string meshID = meshId + "_" + std::to_string(subMeshIdx);
+		std::string meshID = meshId;
+		if (singleMesh) meshID += "_" + std::to_string(subMeshIdx);
 
 		std::string srcAccessors_AttributeViews = SRC_LABEL_ACCESSORS + "." + SRC_LABEL_ACCESSORS_ATTR_VIEWS;
 		std::string srcMesh_MeshID = SRC_LABEL_MESHES + "." + meshID + ".";
