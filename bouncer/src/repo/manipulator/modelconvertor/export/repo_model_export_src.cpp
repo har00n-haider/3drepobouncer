@@ -232,7 +232,8 @@ bool SRCModelExport::generateJSONMapping(
 		jsonTree.addArrayObjects(MP_LABEL_APPEARANCE, matChildrenTrees);
 
 		std::vector<repo::lib::PropertyTree> mappingTrees;
-		std::string meshUID = UUIDtoString(mesh->getUniqueID());
+		bool singleMesh = mappings.size() == 1;
+		std::string meshUID = singleMesh ? UUIDtoString(mappings[0].mesh_id) : UUIDtoString(mesh->getUniqueID());
 		//Could get the mesh split function to pass a mapping out so we don't do this again.
 		for (size_t i = 0; i < mappingLength; ++i)
 		{
@@ -247,7 +248,10 @@ bool SRCModelExport::generateJSONMapping(
 					mappingTree.addToTree(MP_LABEL_APPEARANCE, UUIDtoString(mappings[i].material_id));
 					mappingTree.addToTree(MP_LABEL_MIN, mappings[i].min);
 					mappingTree.addToTree(MP_LABEL_MAX, mappings[i].max);
-					std::vector<std::string> usageArr = { meshUID + "_" + std::to_string(subMeshID) };
+					std::string fullSubmeshID = meshUID;
+					if (!singleMesh)
+						fullSubmeshID += "_" + std::to_string(subMeshID);
+					std::vector<std::string> usageArr = { fullSubmeshID };
 					mappingTree.addToTree(MP_LABEL_USAGE, usageArr);
 
 					mappingTrees.push_back(mappingTree);
