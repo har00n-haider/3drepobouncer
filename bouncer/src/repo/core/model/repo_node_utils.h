@@ -70,18 +70,23 @@ typedef struct{
 	float b;
 }repo_color3d_t;
 
-typedef struct{
-	float x;
-	float y;
-	float z;
-}repo_vector_t;
+template <typename T>
+struct _repo_vector{
+	T x;
+	T y;
+	T z;
+};
+
 
 typedef struct{
 	float x;
 	float y;
 }repo_vector2d_t;
 
-typedef std::vector<uint32_t> repo_face_t;
+using repo_double_vector_t = _repo_vector < double > ;
+using repo_vector_t = _repo_vector < float >;
+
+using repo_face_t =  std::vector<uint32_t>;
 
 //This is used to map info for multipart optimization
 typedef struct{
@@ -185,7 +190,8 @@ static std::string toString(const repo_color4d_t &color)
 	return sstr.str();
 }
 
-static std::string toString(const repo_vector_t &vec)
+template <typename T>
+static std::string toString(const _repo_vector<T> &vec)
 {
 	std::stringstream sstr;
 	sstr << "[" << vec.x << ", " << vec.y << ", " << vec.z << "]";
@@ -223,14 +229,16 @@ static std::string vectorToString(const std::vector<T> &vec)
 	}
 }
 
-static float dotProduct(const repo_vector_t a, const repo_vector_t b)
+template <typename T>
+static T dotProduct(const _repo_vector<T> a, const _repo_vector<T> b)
 {
 	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
-static repo_vector_t crossProduct(const repo_vector_t &a, const repo_vector_t &b)
+template <typename T>
+static _repo_vector<T> crossProduct(const _repo_vector<T> &a, const _repo_vector<T> &b)
 {
-	repo_vector_t product;
+	_repo_vector<T> product;
 	product.x = (a.y * b.z) - (a.z * b.y);
 	product.y = (a.z * b.x) - (a.x * b.z);
 	product.z = (a.x * b.y) - (a.y * b.x);
@@ -238,7 +246,8 @@ static repo_vector_t crossProduct(const repo_vector_t &a, const repo_vector_t &b
 	return product;
 }
 
-static std::string printMat(const std::vector<float> &mat)
+template <typename T>
+static std::string printMat(const std::vector<T> &mat)
 {
 	std::stringstream ss;
 	for (int i = 0; i < mat.size(); ++i)
@@ -253,7 +262,8 @@ static std::string printMat(const std::vector<float> &mat)
 	return ss.str();
 }
 
-static std::string printVec(const repo_vector_t &vec)
+template <typename T>
+static std::string printVec(const _repo_vector<T> &vec)
 {
 	std::stringstream ss;
 	ss << "[ " << vec.x << ", " << vec.y << " ," << vec.z << " ]";
@@ -268,9 +278,10 @@ static std::string printVec(const repo_vector_t &vec)
 * @param vec vector
 * @return returns the resulting vector.
 */
-static repo_vector_t multiplyMatVec(const std::vector<float> &mat, const repo_vector_t &vec)
+template <typename T>
+static _repo_vector<T> multiplyMatVec(const std::vector<T> &mat, const _repo_vector<T> &vec)
 {
-	repo_vector_t result;
+	_repo_vector<T> result;
 	if (mat.size() != 16)
 	{
 		repoError << "Trying to perform a matrix x vector multiplation with unexpected matrix size(" << mat.size() << ")";
@@ -306,9 +317,10 @@ static repo_vector_t multiplyMatVec(const std::vector<float> &mat, const repo_ve
 * @param vec vector
 * @return returns the resulting vector.
 */
-static repo_vector_t multiplyMatVecFake3x3(const std::vector<float> &mat, const repo_vector_t &vec)
+template <typename T>
+static _repo_vector<T> multiplyMatVecFake3x3(const std::vector<T> &mat, const _repo_vector<T> &vec)
 {
-	repo_vector_t result;
+	_repo_vector<T> result;
 	if (mat.size() != 16)
 	{
 		repoError << "Trying to perform a matrix x vector multiplation with unexpected matrix size(" << mat.size() << ")";
@@ -329,7 +341,8 @@ static repo_vector_t multiplyMatVecFake3x3(const std::vector<float> &mat, const 
 	return result;
 }
 
-static float calculateDeterminant(std::vector<float> mat)
+template <typename T>
+static float calculateDeterminant(std::vector<T> mat)
 {
 	/*
 	00 01 02 03
@@ -338,26 +351,26 @@ static float calculateDeterminant(std::vector<float> mat)
 	12 13 14 15
 	*/
 
-	float a1 = mat[0], a2 = mat[1], a3 = mat[2], a4 = mat[3];
-	float b1 = mat[4], b2 = mat[5], b3 = mat[6], b4 = mat[7];
-	float c1 = mat[8], c2 = mat[9], c3 = mat[10], c4 = mat[11];
-	float d1 = mat[12], d2 = mat[13], d3 = mat[14], d4 = mat[15];
+	T a1 = mat[0], a2 = mat[1], a3 = mat[2], a4 = mat[3];
+	T b1 = mat[4], b2 = mat[5], b3 = mat[6], b4 = mat[7];
+	T c1 = mat[8], c2 = mat[9], c3 = mat[10], c4 = mat[11];
+	T d1 = mat[12], d2 = mat[13], d3 = mat[14], d4 = mat[15];
 
-	float a1b2 = (a1 * b2) *(c3 * d4 - c4 * d3);
-	float a1b3 = (a1 * b3) *(c4 * d2 - c2 * d4);
-	float a1b4 = (a1 * b4) *(c2 * d3 - c3 * d2);
+	T a1b2 = (a1 * b2) *(c3 * d4 - c4 * d3);
+	T a1b3 = (a1 * b3) *(c4 * d2 - c2 * d4);
+	T a1b4 = (a1 * b4) *(c2 * d3 - c3 * d2);
 
-	float a2b1 = -(a2 * b1) *(c3 * d4 - c4 * d3);
-	float a2b3 = -(a2 * b3) *(c4 * d1 - c1 * d4);
-	float a2b4 = -(a2 * b4) *(c1 * d3 - c3 * d1);
+	T a2b1 = -(a2 * b1) *(c3 * d4 - c4 * d3);
+	T a2b3 = -(a2 * b3) *(c4 * d1 - c1 * d4);
+	T a2b4 = -(a2 * b4) *(c1 * d3 - c3 * d1);
 
-	float a3b1 = (a3 * b1) *(c2 * d4 - c4 * d2);
-	float a3b2 = (a3 * b2) *(c4 * d1 - c1 * d4);
-	float a3b4 = (a3 * b4) *(c1 * d2 - c2 * d1);
+	T a3b1 = (a3 * b1) *(c2 * d4 - c4 * d2);
+	T a3b2 = (a3 * b2) *(c4 * d1 - c1 * d4);
+	T a3b4 = (a3 * b4) *(c1 * d2 - c2 * d1);
 
-	float a4b1 = -(a4 * b1) *(c2 * d3 - c3 * d2);
-	float a4b2 = -(a4 * b2) *(c3 * d1 - c1 * d3);
-	float a4b3 = -(a4 * b3) *(c1 * d2 - c2 * d1);
+	T a4b1 = -(a4 * b1) *(c2 * d3 - c3 * d2);
+	T a4b2 = -(a4 * b2) *(c3 * d1 - c1 * d3);
+	T a4b3 = -(a4 * b3) *(c1 * d2 - c2 * d1);
 
 	return a1b2 + a1b3 + a1b4
 		+ a2b1 + a2b3 + a2b4
@@ -365,9 +378,10 @@ static float calculateDeterminant(std::vector<float> mat)
 		+ a4b1 + a4b2 + a4b3;
 }
 
-static std::vector<float> invertMat(const std::vector<float> &mat)
+template <typename T>
+static std::vector<T> invertMat(const std::vector<T> &mat)
 {
-	std::vector<float> result;
+	std::vector<T> result;
 	result.resize(16);
 
 	if (mat.size() != 16)
@@ -376,19 +390,19 @@ static std::vector<float> invertMat(const std::vector<float> &mat)
 	}
 	else
 	{
-		const float det = calculateDeterminant(mat);
+		const T det = calculateDeterminant(mat);
 		if (det == 0)
 		{
 			repoError << "Trying to invert a matrix with determinant = 0!";
 		}
 		else
 		{
-			const float inv_det = 1. / det;
+			const T inv_det = 1. / det;
 
-			float a1 = mat[0], a2 = mat[1], a3 = mat[2], a4 = mat[3];
-			float b1 = mat[4], b2 = mat[5], b3 = mat[6], b4 = mat[7];
-			float c1 = mat[8], c2 = mat[9], c3 = mat[10], c4 = mat[11];
-			float d1 = mat[12], d2 = mat[13], d3 = mat[14], d4 = mat[15];
+			T a1 = mat[0], a2 = mat[1], a3 = mat[2], a4 = mat[3];
+			T b1 = mat[4], b2 = mat[5], b3 = mat[6], b4 = mat[7];
+			T c1 = mat[8], c2 = mat[9], c3 = mat[10], c4 = mat[11];
+			T d1 = mat[12], d2 = mat[13], d3 = mat[14], d4 = mat[15];
 
 			result[0] = inv_det * (b2 * (c3 * d4 - c4 * d3) + b3 * (c4 * d2 - c2 * d4) + b4 * (c2 * d3 - c3 * d2));
 			result[1] = -inv_det * (a2 * (c3 * d4 - c4 * d3) + a3 * (c4 * d2 - c2 * d4) + a4 * (c2 * d3 - c3 * d2));
@@ -415,9 +429,10 @@ static std::vector<float> invertMat(const std::vector<float> &mat)
 	return result;
 }
 
-static std::vector<float> matMult(const std::vector<float> &mat1, const std::vector<float> &mat2)
+template <typename T>
+static std::vector<T> matMult(const std::vector<T> &mat1, const std::vector<T> &mat2)
 {
-	std::vector<float> result;
+	std::vector<T> result;
 	if ((mat1.size() == mat2.size()) && mat1.size() == 16)
 	{
 		result.resize(16);
@@ -443,9 +458,10 @@ static std::vector<float> matMult(const std::vector<float> &mat1, const std::vec
 	return result;
 }
 
-static std::vector<float> transposeMat(const std::vector<float> &mat)
+template <typename T>
+static std::vector<T> transposeMat(const std::vector<T> &mat)
 {
-	std::vector<float> result(mat.begin(), mat.end());
+	std::vector<T> result(mat.begin(), mat.end());
 
 	if (mat.size() != 16)
 	{
@@ -477,7 +493,8 @@ static std::vector<float> transposeMat(const std::vector<float> &mat)
 	return result;
 }
 
-static void normalize(repo_vector_t &a)
+template <typename T>
+static void normalize(_repo_vector<T> &a)
 {
 	float length = std::sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
 
