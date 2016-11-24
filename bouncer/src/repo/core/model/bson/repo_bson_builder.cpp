@@ -70,6 +70,16 @@ const repo_vector_t &vec
 }
 
 template<>
+void repo::core::model::RepoBSONBuilder::append < repo_double_vector_t >
+(
+const std::string &label,
+const repo_double_vector_t &vec
+)
+{
+	appendArray(label, std::vector<double>({ vec.x, vec.y, vec.z }));
+}
+
+template<>
 void repo::core::model::RepoBSONBuilder::append < repo_color3d_t >
 (
 const std::string &label,

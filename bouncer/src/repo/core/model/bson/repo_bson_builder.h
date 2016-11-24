@@ -169,6 +169,14 @@ namespace repo {
 				const std::string &label,
 				const repo_vector_t &vec
 				);
+
+			template<>
+			void RepoBSONBuilder::append < repo_double_vector_t >
+				(
+				const std::string &label,
+				const repo_double_vector_t &vec
+				);
+
 			template<>
 			void RepoBSONBuilder::append < repo_color3d_t >
 				(

@@ -193,9 +193,9 @@ namespace repo {
 					const float         &farClippingPlane,
 					const float         &nearClippingPlane,
 					const float         &fieldOfView,
-					const repo_vector_t &lookAt,
-					const repo_vector_t &position,
-					const repo_vector_t &up,
+					const repo_double_vector_t &lookAt,
+					const repo_double_vector_t &position,
+					const repo_double_vector_t &up,
 					const std::string   &name = std::string(),
 					const int           &apiLevel = REPO_NODE_API_LEVEL_1);
 

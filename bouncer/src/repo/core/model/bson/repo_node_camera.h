@@ -155,7 +155,7 @@ namespace repo {
 				* Get the Look At vector of the camera
 				* @return returns a vector of the "Look At"
 				*/
-				repo_vector_t getLookAt() const;
+				repo_double_vector_t getLookAt() const;
 
 				/**
 				* get the orientation of the camera
@@ -167,13 +167,13 @@ namespace repo {
 				* Get the position of the camera
 				* @return returns a vector of the position
 				*/
-				repo_vector_t getPosition() const;
+				repo_double_vector_t getPosition() const;
 
 				/**
 				* Get the up vector of the camera
 				* @return returns a vector of up
 				*/
-				repo_vector_t getUp() const;
+				repo_double_vector_t getUp() const;
 
 				/**
 				* Check if the node is semantically equal to another

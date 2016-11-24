@@ -297,17 +297,17 @@ aiCamera* AssimpModelExport::convertCamera(
 
 	//--------------------------------------------------------------------------
 	// Look at vector
-	repo_vector_t lookAt = camNode->getLookAt();
+	auto lookAt = camNode->getLookAt();
 	aiCam->mLookAt = aiVector3D(lookAt.x, lookAt.y, lookAt.z);
 
 	//--------------------------------------------------------------------------
 	// Position vector
-	repo_vector_t position = camNode->getPosition();
+	auto position = camNode->getPosition();
 	aiCam->mPosition = aiVector3D(position.x, position.y, position.z);;
 
 	//--------------------------------------------------------------------------
 	// Up vector
-	repo_vector_t up = camNode->getUp();
+	auto up = camNode->getUp();
 	aiCam->mUp = aiVector3D(up.x, up.y, up.z);
 
 	return aiCam;

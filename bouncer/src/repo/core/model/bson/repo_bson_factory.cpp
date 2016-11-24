@@ -80,9 +80,9 @@ CameraNode RepoBSONFactory::makeCameraNode(
 	const float         &farClippingPlane,
 	const float         &nearClippingPlane,
 	const float         &fieldOfView,
-	const repo_vector_t &lookAt,
-	const repo_vector_t &position,
-	const repo_vector_t &up,
+	const repo_double_vector_t &lookAt,
+	const repo_double_vector_t &position,
+	const repo_double_vector_t &up,
 	const std::string   &name,
 	const int           &apiLevel)
 {
@@ -603,22 +603,22 @@ RepoIssue RepoBSONFactory::makeRepoIssue(
 	{
 		RepoBSONBuilder vpBuilder;
 
-		repo_vector_t lookAt = viewpoint->getLookAt();
-		repo_vector_t pos = viewpoint->getPosition();
-		repo_vector_t up = viewpoint->getUp();
-		repo_vector_t vDir = { lookAt.x - pos.x, (lookAt.y - pos.y), lookAt.z - pos.z };
+		repo_double_vector_t lookAt = viewpoint->getLookAt();
+		repo_double_vector_t pos = viewpoint->getPosition();
+		repo_double_vector_t up = viewpoint->getUp();
+		repo_double_vector_t vDir = { lookAt.x - pos.x, (lookAt.y - pos.y), lookAt.z - pos.z };
 
 		vpBuilder.append(REPO_ISSUE_LABEL_VP_GUID, generateUUID());
-		repo_vector_t up2 = { up.x - pos.x, up.y - pos.y, up.z - pos.z };
+		repo_double_vector_t up2 = { up.x - pos.x, up.y - pos.y, up.z - pos.z };
 		normalize(up2);
 		vpBuilder.append(REPO_ISSUE_LABEL_VP_UP, up2);
 		vpBuilder.append(REPO_ISSUE_LABEL_VP_POS, pos);
 		vpBuilder.append(REPO_ISSUE_LABEL_VP_LOOKAT, viewpoint->getLookAt());
 		vpBuilder.append(REPO_ISSUE_LABEL_VP_VIEWDIR, vDir);
-		repo_vector_t forward = { -lookAt.x, -lookAt.y, -lookAt.z };
+		repo_double_vector_t forward = { -lookAt.x, -lookAt.y, -lookAt.z };
 		normalize(forward);
 		normalize(up);
-		repo_vector_t right = crossProduct(up, forward);
+		repo_double_vector_t right = crossProduct(up, forward);
 		vpBuilder.append(REPO_ISSUE_LABEL_VP_RIGHT, right);
 
 		vpBuilder << REPO_ISSUE_LABEL_VP_FOV << viewpoint->getFieldOfView();

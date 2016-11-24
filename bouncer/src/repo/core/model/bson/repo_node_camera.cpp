@@ -44,33 +44,34 @@ CameraNode::~CameraNode()
 RepoNode CameraNode::cloneAndApplyTransformation(
 	const std::vector<float> &matrix) const
 {
+	std::vector<double> matD(matrix.begin(), matrix.end());
 	RepoBSONBuilder builder;
 	if (hasField(REPO_NODE_LABEL_LOOK_AT))
 	{
-		builder.append(REPO_NODE_LABEL_LOOK_AT, multiplyMatVec(matrix, getLookAt()));
+		builder.append(REPO_NODE_LABEL_LOOK_AT, multiplyMatVec(matD, getLookAt()));
 	}
 
 	if (hasField(REPO_NODE_LABEL_POSITION))
 	{
-		builder.append(REPO_NODE_LABEL_POSITION, multiplyMatVec(matrix, getPosition()));
+		builder.append(REPO_NODE_LABEL_POSITION, multiplyMatVec(matD, getPosition()));
 	}
 
 	if (hasField(REPO_NODE_LABEL_UP))
 	{
-		builder.append(REPO_NODE_LABEL_UP, multiplyMatVec(matrix, getUp()));
+		builder.append(REPO_NODE_LABEL_UP, multiplyMatVec(matD, getUp()));
 	}
 	return CameraNode(builder.appendElementsUnique(*this));
 }
 
-repo_vector_t CameraNode::getPosition() const
+repo_double_vector_t CameraNode::getPosition() const
 {
-	repo_vector_t vec;
+	repo_double_vector_t vec;
 	if (hasField(REPO_NODE_LABEL_POSITION))
 	{
 		std::vector<float> floatArr = getFloatArray(REPO_NODE_LABEL_POSITION);
 		if (floatArr.size() >= 3)
 		{
-			//repo_vector_t is effectively float[3]
+			//repo_double_vector_t is effectively float[3]
 			std::copy(floatArr.begin(), floatArr.begin() + 3, (float*)&vec);
 		}
 	}
@@ -78,15 +79,15 @@ repo_vector_t CameraNode::getPosition() const
 	return vec;
 }
 
-repo_vector_t CameraNode::getLookAt() const
+repo_double_vector_t CameraNode::getLookAt() const
 {
-	repo_vector_t vec = { 0, 0, -1 };
+	repo_double_vector_t vec = { 0, 0, -1 };
 	if (hasField(REPO_NODE_LABEL_LOOK_AT))
 	{
 		std::vector<float> floatArr = getFloatArray(REPO_NODE_LABEL_LOOK_AT);
 		if (floatArr.size() >= 3)
 		{
-			//repo_vector_t is effectively float[3]
+			//repo_double_vector_t is effectively float[3]
 			std::copy(floatArr.begin(), floatArr.begin() + 3, (float*)&vec);
 		}
 	}
@@ -98,15 +99,15 @@ repo_vector_t CameraNode::getLookAt() const
 		return vec;
 }
 
-repo_vector_t CameraNode::getUp() const
+repo_double_vector_t CameraNode::getUp() const
 {
-	repo_vector_t vec = { 0, 1, 0 };
+	repo_double_vector_t vec = { 0, 1, 0 };
 	if (hasField(REPO_NODE_LABEL_UP))
 	{
 		std::vector<float> floatArr = getFloatArray(REPO_NODE_LABEL_UP);
 		if (floatArr.size() >= 3)
 		{
-			//repo_vector_t is effectively float[3]
+			//repo_double_vector_t is effectively float[3]
 			std::copy(floatArr.begin(), floatArr.begin() + 3, (float*)&vec);
 		}
 	}
@@ -170,15 +171,15 @@ std::vector<float> CameraNode::getCameraMatrix(
 	}
 
 	/** We don't know whether these vectors are already normalized ...*/
-	repo_vector_t zaxis = getLookAt();
-	repo_vector_t yaxis = getUp();
-	repo_vector_t xaxis = crossProduct(yaxis, zaxis);
+	repo_double_vector_t zaxis = getLookAt();
+	repo_double_vector_t yaxis = getUp();
+	repo_double_vector_t xaxis = crossProduct(yaxis, zaxis);
 
 	normalize(zaxis);
 	normalize(yaxis);
 	normalize(xaxis);
 
-	repo_vector_t position = getPosition();
+	repo_double_vector_t position = getPosition();
 
 	mat[a4] = -dotProduct(xaxis, position);
 	mat[b4] = -dotProduct(yaxis, position);
@@ -204,12 +205,12 @@ std::vector<float> CameraNode::getCameraMatrix(
 
 std::vector<float> CameraNode::getOrientation() const
 {
-	repo_vector_t lookAt = getLookAt();
-	repo_vector_t up = getUp();
-	repo_vector_t forward = { -lookAt.x, -lookAt.y, -lookAt.z };
+	repo_double_vector_t lookAt = getLookAt();
+	repo_double_vector_t up = getUp();
+	repo_double_vector_t forward = { -lookAt.x, -lookAt.y, -lookAt.z };
 	normalize(forward);
 	normalize(up);
-	repo_vector_t right = crossProduct(up, forward);
+	repo_double_vector_t right = crossProduct(up, forward);
 
 	float a = up.x - right.y;
 	float b = forward.x - right.z;
