@@ -52,7 +52,8 @@ static bool compareVectors(const repo_vector2d_t &v1, const repo_vector2d_t &v2)
 	return v1.x == v2.x && v1.y == v2.y;
 }
 
-static bool compareVectors(const repo_vector_t &v1, const repo_vector_t &v2)
+template <typename T>
+static bool compareVectors(const _repo_vector<T> &v1, const _repo_vector<T> &v2)
 {
 	return v1.x == v2.x && v1.y == v2.y && v1.z == v2.z;
 }

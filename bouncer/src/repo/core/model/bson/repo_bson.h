@@ -198,6 +198,13 @@ namespace repo {
 				* @return returns the array element in their respective type
 				*/
 				std::vector<float> getFloatArray(const std::string &label) const;
+				
+				/**
+				* Get an array of fields given an element label
+				* @param label name of the array element
+				* @return returns the array element in their respective type
+				*/
+				std::vector<double> getDoubleArray(const std::string &label) const;
 
 				/**
 				* Get an array of fields given an element label
