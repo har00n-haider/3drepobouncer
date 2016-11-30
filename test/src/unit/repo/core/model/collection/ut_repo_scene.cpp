@@ -212,7 +212,7 @@ TEST(RepoSceneTest, AddAndClearStashGraph)
 	auto stashGraph = RepoScene::GraphType::OPTIMIZED;
 
 	EXPECT_FALSE(scene.hasRoot(stashGraph));
-	scene.addStashGraph(empty, empty, empty, empty, empty);
+	scene.addStashGraph(empty, empty, empty, empty, empty, empty);
 	EXPECT_FALSE(scene.hasRoot(stashGraph));
 
 	RepoNodeSet transNodes;
@@ -239,7 +239,7 @@ TEST(RepoSceneTest, AddAndClearStashGraph)
 	meshNodes.insert(new MeshNode(m2));
 	meshNodes.insert(new MeshNode(m3));
 
-	scene.addStashGraph(empty, meshNodes, empty, empty, transNodes);
+	scene.addStashGraph(empty, meshNodes, empty, empty, transNodes, empty);
 	EXPECT_EQ(0, scene.getAllCameras(stashGraph).size());
 	EXPECT_EQ(0, scene.getAllTextures(stashGraph).size());
 	EXPECT_EQ(0, scene.getAllMaterials(stashGraph).size());
@@ -347,7 +347,7 @@ TEST(RepoSceneTest, CommitStash)
 	//Empty stash shouldn't have commit but should return true(apparently)
 	EXPECT_TRUE(scene2.commitStash(getHandler(), errMsg));
 	errMsg.clear();
-	scene2.addStashGraph(empty, meshNodes2, empty, empty, transNodes2);
+	scene2.addStashGraph(empty, meshNodes2, empty, empty, transNodes2, empty);
 	EXPECT_FALSE(scene2.commitStash(nullptr, errMsg));
 	errMsg.clear();
 	EXPECT_TRUE(scene2.commitStash(getHandler(), errMsg));
@@ -506,7 +506,7 @@ TEST(RepoSceneTest, getViewGraph)
 	meshNodes2.insert(new MeshNode(*m2));
 
 	RepoScene scene2(std::vector<std::string>(), empty, meshNodes, empty, empty, empty, transNodes);
-	scene2.addStashGraph(empty, meshNodes2, empty, empty, transNodes2);
+	scene2.addStashGraph(empty, meshNodes2, empty, empty, transNodes2, empty);
 
 	EXPECT_EQ(scene2.getViewGraph(), RepoScene::GraphType::OPTIMIZED);
 }
