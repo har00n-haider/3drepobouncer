@@ -217,9 +217,9 @@ TEST(RepoBSONFactoryTest, MakeCameraNodeTest)
 	float fCP = 10;
 	float nCP = 100;
 	float fov = 500;
-	repo_vector_t lookAt = { 1.0, 2.0, 3.0 };
-	repo_vector_t position = { 3.1, 2.2, 3.5 };
-	repo_vector_t up = { 4.1, 12.2, 23.5 };
+	repo_double_vector_t lookAt = { 1.0, 2.0, 3.0 };
+	repo_double_vector_t position = { 3.1, 2.2, 3.5 };
+	repo_double_vector_t up = { 4.1, 12.2, 23.5 };
 
 	std::string name = "CamTest";
 
@@ -414,8 +414,8 @@ TEST(RepoBSONFactoryTest, MakeMeshNodeTest)
 	ASSERT_EQ(3, boundingBox[0].size());
 	ASSERT_EQ(3, boundingBox[1].size());
 
-	EXPECT_TRUE(compareVectors(bbox[0], { boundingBox[0][0], boundingBox[0][1], boundingBox[0][2] }));
-	EXPECT_TRUE(compareVectors(bbox[1], { boundingBox[1][0], boundingBox[1][1], boundingBox[1][2] }));
+	EXPECT_TRUE(compareVectors(bbox[0], repo_vector_t({ boundingBox[0][0], boundingBox[0][1], boundingBox[0][2] })));
+	EXPECT_TRUE(compareVectors(bbox[1], repo_vector_t({ boundingBox[1][0], boundingBox[1][1], boundingBox[1][2] })));
 }
 
 TEST(RepoBSONFactoryTest, MakeReferenceNodeTest)
