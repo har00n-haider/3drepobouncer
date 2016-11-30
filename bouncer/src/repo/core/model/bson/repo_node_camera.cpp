@@ -68,11 +68,11 @@ repo_double_vector_t CameraNode::getPosition() const
 	repo_double_vector_t vec;
 	if (hasField(REPO_NODE_LABEL_POSITION))
 	{
-		std::vector<float> floatArr = getFloatArray(REPO_NODE_LABEL_POSITION);
+		std::vector<double> floatArr = getDoubleArray(REPO_NODE_LABEL_POSITION);
 		if (floatArr.size() >= 3)
 		{
 			//repo_double_vector_t is effectively float[3]
-			std::copy(floatArr.begin(), floatArr.begin() + 3, (float*)&vec);
+			std::copy(floatArr.begin(), floatArr.begin() + 3, (double*)&vec);
 		}
 	}
 
@@ -84,11 +84,11 @@ repo_double_vector_t CameraNode::getLookAt() const
 	repo_double_vector_t vec = { 0, 0, -1 };
 	if (hasField(REPO_NODE_LABEL_LOOK_AT))
 	{
-		std::vector<float> floatArr = getFloatArray(REPO_NODE_LABEL_LOOK_AT);
+		std::vector<double> floatArr = getDoubleArray(REPO_NODE_LABEL_LOOK_AT);
 		if (floatArr.size() >= 3)
 		{
 			//repo_double_vector_t is effectively float[3]
-			std::copy(floatArr.begin(), floatArr.begin() + 3, (float*)&vec);
+			std::copy(floatArr.begin(), floatArr.begin() + 3, (double*)&vec);
 		}
 	}
 
@@ -104,11 +104,11 @@ repo_double_vector_t CameraNode::getUp() const
 	repo_double_vector_t vec = { 0, 1, 0 };
 	if (hasField(REPO_NODE_LABEL_UP))
 	{
-		std::vector<float> floatArr = getFloatArray(REPO_NODE_LABEL_UP);
+		std::vector<double> floatArr = getDoubleArray(REPO_NODE_LABEL_UP);
 		if (floatArr.size() >= 3)
 		{
 			//repo_double_vector_t is effectively float[3]
-			std::copy(floatArr.begin(), floatArr.begin() + 3, (float*)&vec);
+			std::copy(floatArr.begin(), floatArr.begin() + 3, (double*)&vec);
 		}
 	}
 

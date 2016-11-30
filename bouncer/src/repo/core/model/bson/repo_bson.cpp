@@ -211,6 +211,30 @@ std::vector<float> RepoBSON::getFloatArray(const std::string &label) const
 	return results;
 }
 
+std::vector<double> RepoBSON::getDoubleArray(const std::string &label) const
+{
+	std::vector<double> results;
+	if (hasField(label))
+	{
+		RepoBSON array = getObjectField(label);
+		if (!array.isEmpty())
+		{
+			std::set<std::string> fields;
+			array.getFieldNames(fields);
+
+			// Pre allocate memory to speed up copying
+			results.reserve(fields.size());
+			for (auto field : fields)
+				results.push_back(array.getField(field).numberDouble());
+		}
+		else
+		{
+			repoError << "getDoubleArray: field " << label << " is an empty bson or wrong type!";
+		}
+	}
+	return results;
+}
+
 std::vector<std::string> RepoBSON::getStringArray(const std::string &label) const
 {
 	std::vector<std::string> results;
