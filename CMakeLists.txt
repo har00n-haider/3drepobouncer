@@ -104,6 +104,8 @@ if (REPO_BUILD_TOOLS)
 	add_subdirectory(tools)
 endif()
 
+add_subdirectory(wrapper)
+
 #test exe
 if (REPO_BUILD_TESTS)
 	set(gtest_force_shared_crt ON CACHE BOOL "Build gtest as shared library" FORCE)
