@@ -271,10 +271,12 @@ void IFCUtilsGeometry::retrieveGeometryFromIterator(
 	repoTrace << "Iterating through Geom Iterator.";
 	do
 	{
+		bool debug = allIds.size() >= 20100;
 		IfcGeom::Element<double> *ob = contextIterator.get();
 		auto ob_geo = static_cast<const IfcGeom::TriangulationElement<double>*>(ob);
 		if (ob_geo)
 		{
+			if(debug) repoInfo << ob_geo->name();
 			auto faces = ob_geo->geometry().faces();
 			auto vertices = ob_geo->geometry().verts();
 			auto normals = ob_geo->geometry().normals();
@@ -378,7 +380,7 @@ void IFCUtilsGeometry::retrieveGeometryFromIterator(
 				allMaterials.push_back(post_materials[index]);
 			}
 		}
-		if (allIds.size() % 100 == 0)
+		if (allIds.size() % 100 == 0 || debug)
 			repoInfo << allIds.size() << " meshes created";
 	} while (contextIterator.next());
 }
