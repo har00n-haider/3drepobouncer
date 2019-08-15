@@ -17,6 +17,7 @@
 #include "repo_scene_manager.h"
 
 #include "../../core/model/bson/repo_bson_builder.h"
+#include "../../core/model/bson/repo_bson_ref.h"
 #include "../modeloptimizer/repo_optimizer_multipart.h"
 #include "../modelconvertor/export/repo_model_export_gltf.h"
 #include "../modelconvertor/export/repo_model_export_src.h"
@@ -26,43 +27,58 @@
 using namespace repo::manipulator::modelutility;
 
 bool SceneManager::commitWebBuffers(
-	repo::core::model::RepoScene                 *scene,
-	const std::string                            &geoStashExt,
-	const repo_web_buffers_t                     &resultBuffers,
-	repo::core::handler::AbstractDatabaseHandler *handler,
-	const bool                                    addTimestampToSettings)
+	repo::core::model::RepoScene                          *scene,
+	const std::string                                     &geoStashExt,
+	const repo_web_buffers_t                              &resultBuffers,
+	repo::core::handler::AbstractDatabaseHandler          *handler,
+	repo::core::handler::fileservice::FileManager         *fileManager,
+	const bool                                            addTimestampToSettings)
 {
 	bool success = true;
 	std::string jsonStashExt = scene->getJSONExtension();
+	std::string databaseName = scene->getDatabaseName();
+	std::string projectName = scene->getProjectName();
+
 	//Upload the files
 	for (const auto &bufferPair : resultBuffers.geoFiles)
 	{
-		std::string errMsg;
-		if (success &= handler->insertRawFile(scene->getDatabaseName(), scene->getProjectName() + "." + geoStashExt, bufferPair.first, bufferPair.second,
-			errMsg))
+
+		if (success &= fileManager->uploadFileAndCommit(databaseName, projectName + "." + geoStashExt, bufferPair.first, bufferPair.second))
 		{
-			repoInfo << "File (" << bufferPair.first << ") added successfully.";
+			repoInfo << "File (" << bufferPair.first << ") added successfully to file storage.";
 		}
 		else
 		{
-			repoError << "Failed to add file  (" << bufferPair.first << "): " << errMsg;
+			repoError << "Failed to add file  (" << bufferPair.first << ") to file storage";
 		}
 	}
 
 	for (const auto &bufferPair : resultBuffers.jsonFiles)
 	{
-		std::string databaseName = scene->getDatabaseName();
-		std::string projectName = scene->getProjectName();
 		std::string errMsg;
 		std::string fileName = bufferPair.first;
-		if (success &= handler->insertRawFile(scene->getDatabaseName(), scene->getProjectName() + "." + jsonStashExt, fileName, bufferPair.second,
-			errMsg))
+		
+		if (success &= fileManager->uploadFileAndCommit(databaseName, projectName + "." + jsonStashExt, bufferPair.first, bufferPair.second))
 		{
-			repoInfo << "File (" << fileName << ") added successfully.";
+			repoInfo << "File (" << fileName << ") added successfully to file storage.";
 		}
 		else
 		{
-			repoError << "Failed to add file  (" << fileName << "): " << errMsg;
+			repoError << "Failed to add file  (" << fileName << ") to  file storage.";
+		}
+	}
+
+	std::string errMsg;
+	if (REPO_COLLECTION_STASH_UNITY == geoStashExt)
+	{
+	       if (success &= handler->upsertDocument(databaseName, projectName + "." + geoStashExt, resultBuffers.unityAssets,
+			true, errMsg))
+		{
+			repoInfo << "Unity assets list added successfully.";
+		}
+		else
+		{
+			repoError << "Failed to add Unity assets list: " << errMsg;;
 		}
 	}
 
@@ -88,7 +104,9 @@ repo::core::model::RepoScene* SceneManager::fetchScene(
 	const std::string                             &project,
 	const repo::lib::RepoUUID                                &uuid,
 	const bool                                    &headRevision,
-	const bool                                    &lightFetch)
+	const bool                                    &lightFetch,
+	const bool                                    &ignoreRefScenes,
+	const bool                                    &skeletonFetch)
 {
 	repo::core::model::RepoScene* scene = nullptr;
 	if (handler)
@@ -98,6 +116,10 @@ repo::core::model::RepoScene* SceneManager::fetchScene(
 		scene = new repo::core::model::RepoScene(database, project);
 		if (scene)
 		{
+			if (skeletonFetch)
+				scene->skipLoadingExtFiles();
+			if(ignoreRefScenes)
+				scene->ignoreReferenceScene();
 			if (headRevision)
 				scene->setBranch(uuid);
 			else
@@ -106,11 +128,11 @@ repo::core::model::RepoScene* SceneManager::fetchScene(
 			std::string errMsg;
 			if (scene->loadRevision(handler, errMsg))
 			{
-				repoInfo << "Loaded " <<
+				repoInfo << "Loaded" <<
 					(headRevision ? (" head revision of branch " + uuid.toString())
 					: (" revision " + uuid.toString()))
 					<< " of " << database << "." << project;
-				if (lightFetch)
+				if (lightFetch )
 				{
 					if (scene->loadStash(handler, errMsg))
 					{
@@ -136,14 +158,16 @@ repo::core::model::RepoScene* SceneManager::fetchScene(
 					{
 						repoTrace << "Loaded Scene";
 
-						if (scene->loadStash(handler, errMsg))
-						{
-							repoTrace << "Stash Loaded";
-						}
-						else
-						{
-							//failed to load stash isn't critical, give it a warning instead of returning false
-							repoWarning << "Error loading stash for " << database << "." << project << " : " << errMsg;
+						if (!skeletonFetch) {
+							if (scene->loadStash(handler, errMsg))
+							{
+								repoTrace << "Stash Loaded";
+							}
+							else
+							{
+								//failed to load stash isn't critical, give it a warning instead of returning false
+								repoWarning << "Error loading stash for " << database << "." << project << " : " << errMsg;
+							}
 						}
 					}
 					else{
@@ -259,10 +283,11 @@ bool SceneManager::generateStashGraph(
 }
 
 bool SceneManager::generateWebViewBuffers(
-	repo::core::model::RepoScene                 *scene,
-	const repo::manipulator::modelconvertor::WebExportType          &exType,
-	repo_web_buffers_t                           &resultBuffers,
-	repo::core::handler::AbstractDatabaseHandler *handler)
+	repo::core::model::RepoScene                           *scene,
+	const repo::manipulator::modelconvertor::WebExportType &exType,
+	repo_web_buffers_t                                     &resultBuffers,
+	repo::core::handler::AbstractDatabaseHandler           *handler,
+	repo::core::handler::fileservice::FileManager         *fileManager)
 {
 	bool success = false;
 	if (success = (scene&& scene->isRevisioned()))
@@ -284,6 +309,9 @@ bool SceneManager::generateWebViewBuffers(
 			geoStashExt = scene->getSRCExtension();
 			resultBuffers = generateSRCBuffer(scene);
 			break;
+		case repo::manipulator::modelconvertor::WebExportType::UNITY:
+			repoInfo << "Skipping buffer generation for Unity assets";
+			return true;
 		default:
 			repoError << "Unknown export type with enum:  " << (uint16_t)exType;
 			return false;
@@ -293,7 +321,7 @@ bool SceneManager::generateWebViewBuffers(
 		{
 			if (toCommit)
 			{
-				success = commitWebBuffers(scene, geoStashExt, resultBuffers, handler);
+				success = commitWebBuffers(scene, geoStashExt, resultBuffers, handler, fileManager);
 			}
 		}
 		else
@@ -326,9 +354,9 @@ repo_web_buffers_t SceneManager::generateGLTFBuffer(
 }
 
 bool SceneManager::generateAndCommitSelectionTree(
-	repo::core::model::RepoScene                 *scene,
-	repo::core::handler::AbstractDatabaseHandler *handler
-	)
+	repo::core::model::RepoScene                           *scene,
+	repo::core::handler::AbstractDatabaseHandler           *handler,
+	repo::core::handler::fileservice::FileManager         *fileManager)
 {
 	bool success = false;
 	if (success = scene && scene->isRevisioned() && handler)
@@ -349,13 +377,19 @@ bool SceneManager::generateAndCommitSelectionTree(
 			{
 				std::string fileName = fileNamePrefix + file.first;
 
-				if (handler && handler->insertRawFile(databaseName, projectName + "." + scene->getJSONExtension(), fileName, file.second, errMsg))
+				if (handler && fileManager->uploadFileAndCommit(
+							databaseName,
+							projectName + "." + scene->getJSONExtension(),
+							fileName,
+							file.second))
 				{
-					repoInfo << "File (" << fileName << ") added successfully.";
+					repoInfo << "File (" << fileName << ") added successfully to file storage.";
 				}
 				else
 				{
-					repoError << "Failed to add file  (" << fileName << "): " << errMsg;
+					repoError << "Failed to add file  (" << fileName << ") to file storage: " << errMsg;
+					success = false;
+					break;
 				}
 			}
 		}
@@ -424,3 +458,4 @@ bool SceneManager::removeStashGraph(
 
 	return success;
 }
+

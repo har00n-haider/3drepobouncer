@@ -5,6 +5,8 @@
 
 
 add_subdirectory(connectionpool)
+add_subdirectory(database)
+add_subdirectory(fileservice)
 set(SOURCES
 	${SOURCES}
 	${CMAKE_CURRENT_SOURCE_DIR}/repo_database_handler_abstract.cpp

@@ -19,6 +19,7 @@
 #include "manipulator/repo_manipulator.h"
 #include "repo_controller.h"
 #include "core/model/bson/repo_bson_builder.h"
+#include "core/handler/repo_database_handler_mongo.h"
 
 using namespace repo;
 
@@ -33,39 +34,23 @@ class RepoController::RepoToken
 	friend class RepoController;
 
 public:
-
 	/**
 	* Construct a Repo token
+	* @param config repoconfig with connection information
 	* @param credentials user credentials in a bson format
-	* @param databaseHostPort database address+port as a string
-	* @param databaseName database it is authenticating against
 	*/
 	RepoToken(
-		const repo::core::model::RepoBSON &credentials,
-		const std::string                 &databaseHost = std::string(),
-		const uint32_t                    &port = 27017,
-		const std::string                 &databaseName = std::string(),
-		const std::string                 &alias = std::string()) :
-		databaseHost(databaseHost),
-		databasePort(port),
-		databaseAd(databaseHost + std::to_string(port)),
-		credentials(credentials.isEmpty() ? repo::core::model::RepoBSON() : credentials.copy()),
-		databaseName(databaseName),
+		const lib::RepoConfig             &config,
+		const std::string                 &alias = std::string()) :		
+		config(config),
 		alias(alias)
 	{
-	}
+		auto dbConf = config.getDatabaseConfig();
+		credentials = dbConf.username.empty() ? 
+			nullptr : 
+			core::handler::MongoDatabaseHandler::createBSONCredentials(dbConf.addr, dbConf.username, dbConf.password, dbConf.pwDigested);
 
-	static RepoToken* createTokenFromRawData(
-		const std::string &data)
-	{
-		auto bson = repo::core::model::RepoBSON::fromJSON(data);
-
-		std::string databaseHost = bson.getStringField(dbAddLabel);
-		uint32_t databasePort = bson.getField(dbPortLabel).Int();
-		std::string databaseName = bson.getStringField(dbNameLabel);
-		std::string alias = bson.getStringField(aliasLabel);
-		auto res = new RepoToken(bson.getObjectField(credLabel), databaseHost, databasePort, databaseName, alias);
-		return res;
+		databaseAd = dbConf.addr;
 	}
 
 	~RepoToken(){
@@ -73,37 +58,20 @@ public:
 
 	const repo::core::model::RepoBSON* getCredentials() const
 	{
-		return credentials.isEmpty() ? nullptr : &credentials;
+		return credentials;
 	}
-
-	std::string serialiseToken() const
-	{
-		repo::core::model::RepoBSONBuilder builder;
-		if (!credentials.isEmpty())
-		{
-			builder << credLabel << credentials;
-		}
-		builder << dbAddLabel << databaseHost;
-		builder << dbPortLabel << databasePort;
-		builder << dbNameLabel << databaseName;
-		builder << aliasLabel << alias;
-
-		return builder.obj().toString();
-	}
-
+	
 	bool valid() const
 	{
-		return !(databaseHost.empty());
+		return config.validate();
 	}
 
 private:
-	const repo::core::model::RepoBSON credentials;
-	const std::string databaseAd;
-	const std::string databaseHost;
-	const uint32_t databasePort;
-	const std::string databaseName;
+	const lib::RepoConfig config;
+	const core::model::RepoBSON *credentials;
 	std::string alias;
-};
+	std::string databaseAd, bucketRegion, bucketName, databaseName = REPO_ADMIN; //FIXME: workaround, to be removed.	
+	};
 
 class RepoController::_RepoControllerImpl{
 public:
@@ -133,50 +101,14 @@ public:
 	* @param errMsg error message if failed
 	* @param address address of the database
 	* @param port port number
-	* @param dbName name of the database within mongo to connect to
-	* @param username user login name
-	* @param password user password
-	* @param pwDigested is given password digested (default: false)
-	* @return * @return returns a void pointer to a token
-	*/
-	RepoToken* authenticateMongo(
-		std::string       &errMsg,
-		const std::string &address,
-		const uint32_t    &port,
-		const std::string &dbName,
-		const std::string &username,
-		const std::string &password,
-		const bool        &pwDigested = false
-		);
-
-	/**
-	* Connect to a mongo database, authenticate by the admin database
-	* @param errMsg error message if failed
-	* @param token authentication token
-	* @param returns true upon success
-	*/
-	bool authenticateMongo(
-		std::string       &errMsg,
-		const RepoToken   *token
-		);
-
-	/**
-	* Connect to a mongo database, authenticate by the admin database
-	* @param errMsg error message if failed
-	* @param address address of the database
-	* @param port port number
 	* @param username user login name
 	* @param password user password
 	* @param pwDigested is given password digested (default: false)
 	* @return returns a void pointer to a token
 	*/
-	RepoToken* authenticateToAdminDatabaseMongo(
+	RepoToken* init(
 		std::string       &errMsg,
-		const std::string &address,
-		const int         &port,
-		const std::string &username,
-		const std::string &password,
-		const bool        &pwDigested = false
+		const lib::RepoConfig  &config
 		);
 
 	/**
@@ -186,34 +118,6 @@ public:
 	* @param token token to the database
 	*/
 	void disconnectFromDatabase(const RepoToken* token);
-
-	/**
-	* Checks whether given credentials permit successful connection to a
-	* given database.
-	* @param token token
-	* @return returns true if successful, false otherwise
-	*/
-	bool testConnection(const RepoToken *token);
-
-	/**
-	* create a token base on the information given
-	*/
-	RepoToken* createToken(
-		const std::string &alias,
-		const std::string &address,
-		const int         &port,
-		const std::string &dbName,
-		const std::string &username,
-		const std::string &password
-		);
-
-	RepoController::RepoToken* createToken(
-		const std::string &alias,
-		const std::string &address,
-		const int         &port,
-		const std::string &dbName,
-		const RepoController::RepoToken *token
-		);
 
 	/*
 	*	------------- Database info lookup --------------
@@ -398,23 +302,6 @@ public:
 	*/
 	std::list<std::string> getStandardDatabaseRoles(const RepoToken *token);
 
-	/*
-	*	---------------- Database Retrieval -----------------------
-	*/
-
-	/**
-	* Clean up any incomplete commits within the project
-	* @param address mongo database address
-	* @param port port number
-	* @param dbName name of the database
-	* @param projectName name of the project
-	*/
-	bool cleanUp(
-		const RepoToken                        *token,
-		const std::string                      &dbName,
-		const std::string                      &projectName
-		);
-
 	/**
 	* Retrieve a RepoScene with a specific revision loaded.
 	* @param token Authentication token
@@ -433,7 +320,9 @@ public:
 		const std::string    &project,
 		const std::string    &uuid = REPO_HISTORY_MASTER_BRANCH,
 		const bool           &headRevision = true,
-		const bool           &lightFetch = false);
+		const bool           &lightFetch = false,
+		const bool           &ignoreRefScene = false,
+		const bool           &skeletonFetch = false);
 
 	/**
 	* Save the files of the original model to a specified directory
@@ -484,7 +373,7 @@ public:
 	* @param  rawData data in the form of byte vector
 	* @param mimeType the MIME type of the data (optional)
 	*/
-	void insertBinaryFileToDatabase(
+	bool insertBinaryFileToDatabase(
 		const RepoToken            *token,
 		const std::string          &database,
 		const std::string          &collection,
@@ -788,6 +677,7 @@ public:
 		const RepoController::RepoToken                    *token,
 		repo::core::model::RepoScene *scene,
 		std::unordered_map<std::string, std::vector<uint8_t>> &jsonFiles,
+		repo::core::model::RepoUnityAssets &unityAssets,
 		std::vector<std::vector<uint16_t>> &serialisedFaceBuf,
 		std::vector<std::vector<std::vector<float>>> &idMapBuf,
 		std::vector<std::vector<std::vector<repo_mesh_mapping_t>>> &meshMappings);
@@ -811,6 +701,7 @@ public:
 	*/
 	repo::core::model::RepoScene* loadSceneFromFile(
 		const std::string &filePath,
+		uint8_t           &err,
 		const bool &applyReduction = true,
 		const bool &rotateModel = false,
 		const repo::manipulator::modelconvertor::ModelImportConfig *config

@@ -24,9 +24,12 @@ cmake_minimum_required(VERSION 2.8)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
-
+if(${APPLE})
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework Foundation")
+endif()
 
 option (REPO_BUILD_COVERAGE "Building with coverage report" OFF)
+option (ODA_SUPPORT "If ODA library is present" OFF)
 if(REPO_BUILD_COVERAGE)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 --coverage")
 endif()
@@ -79,6 +82,23 @@ if(NOT ${IFCOPENSHELL_FOUND})
 	message(FATAL_ERROR "Cannot find IFCOpenShell")
 endif()
 
+#===================== ODA ============================
+if (ODA_SUPPORT)
+	add_definitions(-D_TOOLKIT_IN_DLL_)
+	add_definitions(-DODA_SUPPORT)
+	find_package(ODA REQUIRED)
+endif()
+
+#==================== AWS S3 SDK ======================
+option (S3_SUPPORT "Build with S3 support" OFF)
+if (S3_SUPPORT)
+	add_definitions(-DS3_SUPPORT)
+	find_package(AWSSDK REQUIRED)
+	if(NOT ${AWSSDK_FOUND})
+		message(FATAL_ERROR "Cannot find AWS SDK")
+	endif()
+endif()
+
 #================COMPILE 3D REPO BOUNCER ==============
 option (REPO_BUILD_CLIENT "If the Command Line Client is built in addition to the library" ON)
 option (REPO_BUILD_TOOLS "If the Command Line Tool is built in addition to the library" ON)
@@ -103,8 +123,6 @@ endif()
 if (REPO_BUILD_TOOLS)
 	add_subdirectory(tools)
 endif()
-
-add_subdirectory(wrapper)
 
 #test exe
 if (REPO_BUILD_TESTS)

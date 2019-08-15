@@ -51,180 +51,37 @@ RepoController::_RepoControllerImpl::~_RepoControllerImpl()
 	}
 }
 
-RepoController::RepoToken* RepoController::_RepoControllerImpl::authenticateToAdminDatabaseMongo(
+RepoController::RepoToken* RepoController::_RepoControllerImpl::init(
 	std::string       &errMsg,
-	const std::string &address,
-	const int         &port,
-	const std::string &username,
-	const std::string &password,
-	const bool        &pwDigested
+	const lib::RepoConfig  &config
 	)
 {
-	manipulator::RepoManipulator* worker = workerPool.pop();
-
-	core::model::RepoBSON* cred = 0;
-	RepoToken *token = 0;
-
-	std::string dbFullAd = address + ":" + std::to_string(port);
-
-	bool success = worker->connectAndAuthenticateWithAdmin(errMsg, address, port,
-		numDBConnections, username, password, pwDigested);
-
-	if (success && !username.empty())
-		cred = worker->createCredBSON("admin", username, password, pwDigested);
-
-	if (success && (cred || username.empty()))
-	{
-		token = new RepoController::RepoToken(*cred, address, port, worker->getNameOfAdminDatabase(dbFullAd));
-		if (cred) delete cred;
-		repoInfo << "Successfully connected to the " << dbFullAd;
-		if (!username.empty())
-			repoInfo << username << " is authenticated to " << dbFullAd;
-	}
-
-	workerPool.push(worker);
-	return token;
-}
-
-RepoController::RepoToken* RepoController::_RepoControllerImpl::authenticateMongo(
-	std::string       &errMsg,
-	const std::string &address,
-	const uint32_t    &port,
-	const std::string &dbName,
-	const std::string &username,
-	const std::string &password,
-	const bool        &pwDigested
-	)
-{
-	manipulator::RepoManipulator* worker = workerPool.pop();
-
-	core::model::RepoBSON* cred = 0;
-	RepoToken *token = 0;
-
-	std::string dbFullAd = address + ":" + std::to_string(port);
-
-	bool success = worker->connectAndAuthenticate(errMsg, address, port,
-		numDBConnections, dbName, username, password, pwDigested);
-
-	if (success && !username.empty())
-		cred = worker->createCredBSON(dbName, username, password, pwDigested);
-	workerPool.push(worker);
-
-	if (cred || username.empty())
-	{
-		token = new RepoController::RepoToken(*cred, address, port, dbName);
-		if (cred) delete cred;
-	}
-	return token;
-}
-
-bool RepoController::_RepoControllerImpl::authenticateMongo(
-	std::string                       &errMsg,
-	const RepoController::RepoToken   *token
-	)
-{
-	bool success = false;
-	if (success = token && token->valid())
-	{
+	RepoToken *token = nullptr;
+	if (config.validate()) {
 		manipulator::RepoManipulator* worker = workerPool.pop();
-		success = worker->connectAndAuthenticate(errMsg, token->databaseHost, token->databasePort,
-			numDBConnections, token->databaseName, token->getCredentials());
+
+		auto dbConf = config.getDatabaseConfig();
+
+
+		//FIXME : this should just use the dbConf struct...
+		const bool success = worker->init(errMsg, config, numDBConnections);
+
+		if (success)
+		{
+			const std::string dbFullAd = dbConf.addr + ":" + std::to_string(dbConf.port);
+			token = new RepoController::RepoToken(config);			
+			repoInfo << "Successfully connected to the " << dbFullAd;
+			if (!dbConf.username.empty())
+				repoInfo << dbConf.username << " is authenticated to " << dbFullAd;
+		}
+
 		workerPool.push(worker);
 	}
-	else
-	{
-		errMsg = "Token is invalid!";
+	else {
+		errMsg = "Invalid configuration.";
 	}
-
-	return success;
-}
-
-bool RepoController::_RepoControllerImpl::testConnection(const RepoController::RepoToken *token)
-{
-	std::string errMsg;
-	bool isConnected = false;
-	if (authenticateMongo(
-		errMsg,
-		token))
-	{
-		repoTrace << "Connection established.";
-		disconnectFromDatabase(token);
-		isConnected = true;
-	}
-	else
-	{
-		//connection/authentication failed
-		repoError << "Failed to connect/authenticate: " << errMsg;
-	}
-	return isConnected;
-}
-
-bool  RepoController::_RepoControllerImpl::cleanUp(
-	const RepoController::RepoToken        *token,
-	const std::string                      &dbName,
-	const std::string                      &projectName
-	)
-{
-	if (!token)
-	{
-		repoError << "Failed to clean up project: empty token to database";
-		return false;
-	}
-
-	if (dbName.empty() || projectName.empty())
-	{
-		repoError << "Failed to clean up project: database or project name is empty!";
-		return false;
-	}
-
-	manipulator::RepoManipulator* worker = workerPool.pop();
-	bool success = worker->cleanUp(token->databaseAd, token->getCredentials(), dbName, projectName);
-	workerPool.push(worker);
-	return success;
-}
-
-RepoController::RepoToken* RepoController::_RepoControllerImpl::createToken(
-	const std::string &alias,
-	const std::string &address,
-	const int         &port,
-	const std::string &dbName,
-	const std::string &username,
-	const std::string &password
-	)
-{
-	manipulator::RepoManipulator* worker = workerPool.pop();
-
-	RepoController::RepoToken *token = nullptr;
-
-	std::string dbFullAd = address + ":" + std::to_string(port);
-	repo::core::model::RepoBSON *cred = nullptr;
-	if (!username.empty())
-		cred = worker->createCredBSON(dbName, username, password, false);
-	workerPool.push(worker);
-
-	if (cred || username.empty())
-	{
-		token = new RepoController::RepoToken(cred ? *cred : repo::core::model::RepoBSON(), address, port, dbName, alias);
-		if (cred)delete cred;
-	}
-
-	return token && token->valid() ? token : nullptr;
-}
-
-RepoController::RepoToken* RepoController::_RepoControllerImpl::createToken(
-	const std::string &alias,
-	const std::string &address,
-	const int         &port,
-	const std::string &dbName,
-	const RepoController::RepoToken *credToken
-	)
-{
-	RepoController::RepoToken *token = nullptr;
-	std::string dbFullAd = address + ":" + std::to_string(port);
-
-	token = new RepoController::RepoToken(credToken->credentials, address, port, dbName, alias);
-
-	return token && token->valid() ? token : nullptr;
+	
+	return token;
 }
 
 bool RepoController::_RepoControllerImpl::commitAssetBundleBuffers(
@@ -234,7 +91,12 @@ bool RepoController::_RepoControllerImpl::commitAssetBundleBuffers(
 {
 	bool success = false;
 	manipulator::RepoManipulator* worker = workerPool.pop();
-	success = worker->commitAssetBundleBuffers(token->databaseAd, token->getCredentials(), scene, buffers);
+	success = worker->commitAssetBundleBuffers(token->databaseAd,
+			token->getCredentials(),
+			token->bucketName,
+			token->bucketRegion,
+			scene,
+			buffers);
 	workerPool.push(worker);
 
 	return success;
@@ -260,7 +122,14 @@ bool RepoController::_RepoControllerImpl::commitScene(
 					sceneOwner = "ANONYMOUS USER";
 				}
 				manipulator::RepoManipulator* worker = workerPool.pop();
-				success = worker->commitScene(token->databaseAd, token->getCredentials(), scene, sceneOwner, tag, desc);
+				success = worker->commitScene(token->databaseAd,
+						token->getCredentials(),
+						token->bucketName,
+						token->bucketRegion,
+						scene,
+						sceneOwner,
+						tag,
+						desc);
 				workerPool.push(worker);
 			}
 			else
@@ -325,7 +194,9 @@ repo::core::model::RepoScene* RepoController::_RepoControllerImpl::fetchScene(
 	const std::string    &collection,
 	const std::string    &uuid,
 	const bool           &headRevision,
-	const bool           &lightFetch)
+	const bool           &lightFetch,
+	const bool           &ignoreRefScene,
+	const bool           &skeletonFetch)
 {
 	repo::core::model::RepoScene* scene = 0;
 	if (token)
@@ -333,7 +204,7 @@ repo::core::model::RepoScene* RepoController::_RepoControllerImpl::fetchScene(
 		manipulator::RepoManipulator* worker = workerPool.pop();
 
 		scene = worker->fetchScene(token->databaseAd, token->getCredentials(),
-			database, collection, repo::lib::RepoUUID(uuid), headRevision, lightFetch);
+			database, collection, repo::lib::RepoUUID(uuid), headRevision, lightFetch, ignoreRefScene, skeletonFetch);
 
 		workerPool.push(worker);
 	}
@@ -346,7 +217,7 @@ repo::core::model::RepoScene* RepoController::_RepoControllerImpl::fetchScene(
 }
 
 bool RepoController::_RepoControllerImpl::generateAndCommitSelectionTree(
-	const RepoController::RepoToken                               *token,
+	const RepoController::RepoToken         *token,
 	repo::core::model::RepoScene            *scene)
 {
 	bool success = false;
@@ -360,7 +231,11 @@ bool RepoController::_RepoControllerImpl::generateAndCommitSelectionTree(
 			worker->fetchScene(token->databaseAd, token->getCredentials(), scene);
 		}
 
-		success = worker->generateAndCommitSelectionTree(token->databaseAd, token->getCredentials(), scene);
+		success = worker->generateAndCommitSelectionTree(token->databaseAd,
+				token->getCredentials(),
+				token->bucketName,
+				token->bucketRegion,
+				scene);
 		workerPool.push(worker);
 	}
 
@@ -630,7 +505,7 @@ const std::list<std::string> &databases)
 	return map;
 }
 
-void RepoController::_RepoControllerImpl::insertBinaryFileToDatabase(
+bool RepoController::_RepoControllerImpl::insertBinaryFileToDatabase(
 	const RepoController::RepoToken            *token,
 	const std::string          &database,
 	const std::string          &collection,
@@ -641,13 +516,21 @@ void RepoController::_RepoControllerImpl::insertBinaryFileToDatabase(
 	if (token)
 	{
 		manipulator::RepoManipulator* worker = workerPool.pop();
-		worker->insertBinaryFileToDatabase(token->databaseAd,
-			token->getCredentials(), database, collection, name, rawData, mimeType);
+		return worker->insertBinaryFileToDatabase(token->databaseAd,
+			token->getCredentials(),
+			token->bucketName,
+			token->bucketRegion,
+			database,
+			collection,
+			name,
+			rawData,
+			mimeType);
 		workerPool.push(worker);
 	}
 	else
 	{
 		repoError << "Trying to save a binary file without a database connection!";
+		return false;
 	}
 }
 
@@ -895,14 +778,18 @@ repo::core::model::RepoScene* RepoController::_RepoControllerImpl::createFederat
 }
 
 bool RepoController::_RepoControllerImpl::generateAndCommitGLTFBuffer(
-	const RepoController::RepoToken                    *token,
-	repo::core::model::RepoScene *scene)
+	const RepoController::RepoToken *token,
+	repo::core::model::RepoScene    *scene)
 {
 	bool success;
 	if (success = token && scene)
 	{
 		manipulator::RepoManipulator* worker = workerPool.pop();
-		success = worker->generateAndCommitGLTFBuffer(token->databaseAd, token->getCredentials(), scene);
+		success = worker->generateAndCommitGLTFBuffer(token->databaseAd,
+				token->getCredentials(),
+				token->bucketName,
+				token->bucketRegion,
+				scene);
 		workerPool.push(worker);
 	}
 	else
@@ -913,14 +800,18 @@ bool RepoController::_RepoControllerImpl::generateAndCommitGLTFBuffer(
 }
 
 bool RepoController::_RepoControllerImpl::generateAndCommitSRCBuffer(
-	const RepoController::RepoToken                    *token,
-	repo::core::model::RepoScene *scene)
+	const RepoController::RepoToken *token,
+	repo::core::model::RepoScene    *scene)
 {
 	bool success;
 	if (success = token && scene)
 	{
 		manipulator::RepoManipulator* worker = workerPool.pop();
-		success = worker->generateAndCommitSRCBuffer(token->databaseAd, token->getCredentials(), scene);
+		success = worker->generateAndCommitSRCBuffer(token->databaseAd,
+				token->getCredentials(),
+				token->bucketName,
+				token->bucketRegion,
+				scene);
 		workerPool.push(worker);
 	}
 	else
@@ -1050,6 +941,7 @@ std::vector<std::shared_ptr<repo::core::model::MeshNode>> RepoController::_RepoC
 	const RepoController::RepoToken                    *token,
 	repo::core::model::RepoScene *scene,
 	std::unordered_map<std::string, std::vector<uint8_t>> &jsonFiles,
+	repo::core::model::RepoUnityAssets &unityAssets,
 	std::vector<std::vector<uint16_t>> &serialisedFaceBuf,
 	std::vector<std::vector<std::vector<float>>> &idMapBuf,
 	std::vector<std::vector<std::vector<repo_mesh_mapping_t>>> &meshMappings)
@@ -1058,7 +950,7 @@ std::vector<std::shared_ptr<repo::core::model::MeshNode>> RepoController::_RepoC
 	if (scene)
 	{
 		manipulator::RepoManipulator* worker = workerPool.pop();
-		res = worker->initialiseAssetBuffer(token->databaseAd, token->getCredentials(), scene, jsonFiles, serialisedFaceBuf, idMapBuf, meshMappings);
+		res = worker->initialiseAssetBuffer(token->databaseAd, token->getCredentials(), scene, jsonFiles, unityAssets, serialisedFaceBuf, idMapBuf, meshMappings);
 		workerPool.push(worker);
 	}
 	else
@@ -1109,20 +1001,21 @@ bool RepoController::_RepoControllerImpl::isVREnabled(const RepoToken *token,
 repo::core::model::RepoScene*
 RepoController::_RepoControllerImpl::loadSceneFromFile(
 const std::string                                          &filePath,
+uint8_t													 &err,
 const bool                                                 &applyReduction,
 const bool                                                 &rotateModel,
 const repo::manipulator::modelconvertor::ModelImportConfig *config)
 {
-	std::string errMsg;
+
 	repo::core::model::RepoScene *scene = nullptr;
 
 	if (!filePath.empty())
 	{
 		manipulator::RepoManipulator* worker = workerPool.pop();
-		scene = worker->loadSceneFromFile(filePath, errMsg, applyReduction, rotateModel, config);
+		scene = worker->loadSceneFromFile(filePath, err, applyReduction, rotateModel, config);
 		workerPool.push(worker);
 		if (!scene)
-			repoError << "Failed to load scene from file: " << errMsg;
+			repoError << "Failed to load scene from file - error code: " << std::to_string(err);
 	}
 	else
 	{

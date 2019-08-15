@@ -45,8 +45,10 @@
 #define REPO_LABEL_OVERSIZED_FILES  "_extRef"
 #define REPO_LABEL_AVATAR           "avatar"
 #define REPO_LABEL_DATA             "data"
+#define REPO_LABEL_DATABASE         "database"
 #define REPO_LABEL_HEIGHT           "height"
 #define REPO_LABEL_MEDIA_TYPE       "mime"              //!< Media Type (mime type)
+#define REPO_LABEL_MODEL            "model"
 #define REPO_LABEL_ROLE             "role"
 #define REPO_LABEL_ROLES            "roles"
 #define REPO_LABEL_USER             "user"
@@ -89,7 +91,8 @@
 #define REPO_COLLECTION_STASH_GLTF  "stash.gltf"
 #define REPO_COLLECTION_STASH_X3D   "stash.x3d"
 #define REPO_COLLECTION_STASH_JSON  "stash.json_mpc"
-#define REPO_COLLECTION_STASH_UNITY  "stash.unity3d"
+#define REPO_COLLECTION_STASH_UNITY "stash.unity3d"
+#define REPO_COLLECTION_EXT_REF     "ref"
 
 #define REPO_COLLECTION_SETTINGS            "settings"
 
@@ -108,6 +111,15 @@
 #define REPO_DEFAULT_PROJECT_SPEED              5.0
 #define REPO_DEFAULT_PROJECT_ZFAR               1000.0
 #define REPO_DEFAULT_PROJECT_ZNEAR              0.001
+
+#define REPO_DOCUMENT_ID_SUFFIX_FULLTREE        "fulltree.json"
+#define REPO_DOCUMENT_ID_SUFFIX_IDMAP           "idMap.json"
+#define REPO_DOCUMENT_ID_SUFFIX_IDTOMESHES      "idToMeshes.json"
+#define REPO_DOCUMENT_ID_SUFFIX_TREEPATH        "tree_path.json"
+#define REPO_DOCUMENT_ID_SUFFIX_UNITYASSETS     "unityAssets.json"
+#define REPO_DOCUMENT_ID_SUFFIX_UNITY_JSON      "_unity.json.mpc"
+#define REPO_DOCUMENT_ID_SUFFIX_UNITY3D         ".unity3d"
+#define REPO_DOCUMENT_ID_SUFFIX_UNITY3D_WIN     "_win64.unity3d"
 
 #define REPO_HISTORY_MASTER_BRANCH  "00000000-0000-0000-0000-000000000000"
 

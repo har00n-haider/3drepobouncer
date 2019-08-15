@@ -18,7 +18,18 @@
 #pragma once
 #include <repo/repo_controller.h>
 #include "repo_test_database_info.h"
+#include "repo_test_fileservice_info.h"
 #include <fstream>
+
+static repo::RepoController::RepoToken* initController(repo::RepoController *controller) {
+	repo::lib::RepoConfig config = { REPO_GTEST_DBADDRESS, REPO_GTEST_DBPORT,
+		REPO_GTEST_DBUSER, REPO_GTEST_DBPW };
+	if(!REPO_GTEST_S3_BUCKET.empty() && !REPO_GTEST_S3_REGION.empty())
+		config.configureS3(REPO_GTEST_S3_BUCKET, REPO_GTEST_S3_REGION);
+	config.configureFS("./", 2, false);
+	std::string errMsg;
+	return controller->init(errMsg, config);
+}
 
 static bool projectExists(
 	const std::string &db,
@@ -26,10 +37,8 @@ static bool projectExists(
 {
 	bool res = false;
 	repo::RepoController *controller = new repo::RepoController();
-	std::string errMsg;
-	repo::RepoController::RepoToken *token =
-		controller->authenticateToAdminDatabaseMongo(errMsg, REPO_GTEST_DBADDRESS, REPO_GTEST_DBPORT,
-		REPO_GTEST_DBUSER, REPO_GTEST_DBPW);
+	auto token = initController(controller);
+
 	if (token)
 	{
 		std::list<std::string> dbList;
@@ -52,10 +61,8 @@ static bool projectSettingsCheck(
 {
 	bool res = false;
 	repo::RepoController *controller = new repo::RepoController();
-	std::string errMsg;
-	repo::RepoController::RepoToken *token =
-		controller->authenticateToAdminDatabaseMongo(errMsg, REPO_GTEST_DBADDRESS, REPO_GTEST_DBPORT,
-		REPO_GTEST_DBUSER, REPO_GTEST_DBPW);
+	auto token = initController(controller);
+
 	if (token)
 	{
 		auto scene = controller->fetchScene(token, dbName, projectName, REPO_HISTORY_MASTER_BRANCH, true, true);
@@ -75,10 +82,7 @@ static bool projectHasValidRevision(
 {
 	bool res = false;
 	repo::RepoController *controller = new repo::RepoController();
-	std::string errMsg;
-	repo::RepoController::RepoToken *token =
-		controller->authenticateToAdminDatabaseMongo(errMsg, REPO_GTEST_DBADDRESS, REPO_GTEST_DBPORT,
-		REPO_GTEST_DBUSER, REPO_GTEST_DBPW);
+	auto token = initController(controller);
 	if (token)
 	{
 		auto scene = controller->fetchScene(token, dbName, projectName, REPO_HISTORY_MASTER_BRANCH, true, true);

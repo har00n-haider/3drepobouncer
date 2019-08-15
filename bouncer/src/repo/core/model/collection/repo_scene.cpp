@@ -375,6 +375,10 @@ void RepoScene::addMetadata(
 	clearStash();
 }
 
+bool RepoScene::isMissingNodes() const {
+	return status & REPO_SCENE_ENTITIES_BIT;
+}
+
 bool RepoScene::addNodeToScene(
 	const GraphType &gType,
 	const RepoNodeSet nodes,
@@ -382,25 +386,29 @@ bool RepoScene::addNodeToScene(
 	RepoNodeSet *collection)
 {
 	bool success = true;
-	RepoNodeSet::iterator nodeIterator;
-	if (nodes.size() > 0)
+
+	for (auto & node : nodes)
 	{
-		collection->insert(nodes.begin(), nodes.end());
-		for (nodeIterator = nodes.begin(); nodeIterator != nodes.end(); ++nodeIterator)
+		if (node)
 		{
-			RepoNode * node = *nodeIterator;
-			if (node)
-			{
+			if (node->getTypeAsEnum() == NodeType::TRANSFORMATION || node->getParentIDs().size()) {
+				collection->insert(node);
 				if (!addNodeToMaps(gType, node, errMsg))
 				{
 					repoError << "failed to add node (" << node->getUniqueID() << " to scene graph: " << errMsg;
 					success = false;
 				}
 			}
-			if (gType == GraphType::DEFAULT)
-				newAdded.insert(node->getSharedID());
+			else {
+				//Orphaned nodes detected, flag missing nodes
+				setMissingNodes();
+				continue;
+			}
 		}
+		if (gType == GraphType::DEFAULT)
+			newAdded.insert(node->getSharedID());
 	}
+
 
 	return success;
 }
@@ -520,6 +528,7 @@ void RepoScene::clearStash()
 
 bool RepoScene::commit(
 	repo::core::handler::AbstractDatabaseHandler *handler,
+	repo::core::handler::fileservice::FileManager *manager,
 	std::string &errMsg,
 	const std::string &userName,
 	const std::string &message,
@@ -555,7 +564,7 @@ bool RepoScene::commit(
 		if (!message.empty())
 			commitMsg = message;
 
-		if (success &= commitRevisionNode(handler, errMsg, newRevNode, userName, commitMsg, tag))
+		if (success &= commitRevisionNode(handler, manager, errMsg, newRevNode, userName, commitMsg, tag))
 		{
 			repoInfo << "Commited revision node, commiting scene nodes...";
 			//commited the revision node, commit the modification on the scene
@@ -656,6 +665,7 @@ bool RepoScene::commitProjectSettings(
 
 bool RepoScene::commitRevisionNode(
 	repo::core::handler::AbstractDatabaseHandler *handler,
+	repo::core::handler::fileservice::FileManager *manager,
 	std::string &errMsg,
 	RevisionNode *&newRevNode,
 	const std::string &userName,
@@ -681,15 +691,7 @@ bool RepoScene::commitRevisionNode(
 		uniqueIDs.push_back(keyVal.first);
 	}
 
-	//convert the sets to vectors
-	std::vector<repo::lib::RepoUUID> newAddedV(newAdded.begin(), newAdded.end());
-	std::vector<repo::lib::RepoUUID> newRemovedV(newRemoved.begin(), newRemoved.end());
-	std::vector<repo::lib::RepoUUID> newModifiedV(newModified.begin(), newModified.end());
-
 	repoTrace << "Committing Revision Node....";
-
-	repoTrace << "New revision: #current = " << uniqueIDs.size() << " #added = " << newAddedV.size()
-		<< " #deleted = " << newRemovedV.size() << " #modified = " << newModifiedV.size();
 
 	std::vector<std::string> fileNames;
 	for (const std::string &name : refFiles)
@@ -700,12 +702,14 @@ bool RepoScene::commitRevisionNode(
 
 	newRevNode =
 		new RevisionNode(RepoBSONFactory::makeRevisionNode(userName, branch, uniqueIDs,
-		/*newAddedV, newRemovedV, newModifiedV,*/ fileNames, parent, worldOffset, message, tag));
+		fileNames, parent, worldOffset, message, tag));
 	*newRevNode = newRevNode->cloneAndUpdateStatus(RevisionNode::UploadStatus::GEN_DEFAULT);
 
 	if (newRevNode)
 	{
 		handler->createIndex(databaseName, projectName + "." + revExt, BSON(REPO_NODE_REVISION_LABEL_TIMESTAMP << -1));
+		handler->createIndex(databaseName, projectName + "." + sceneExt, BSON("metadata.IFC GUID" << 1 << REPO_NODE_LABEL_PARENTS << 1));
+		handler->createIndex(databaseName, projectName + "." + sceneExt, BSON(REPO_NODE_LABEL_SHARED_ID << 1 <<  REPO_LABEL_TYPE << 1 << REPO_LABEL_ID << 1));
 		//Creation of the revision node will append unique id onto the filename (e.g. <uniqueID>chair.obj)
 		//we need to store the file in GridFS under the new name
 		std::vector<std::string> newRefFileNames = newRevNode->getOrgFiles();
@@ -743,10 +747,10 @@ bool RepoScene::commitRevisionNode(
 				std::vector<uint8_t> rawFile(size);
 				if (file.read((char*)rawFile.data(), size))
 				{
-					std::string errMsg;
-					if (!handler->insertRawFile(databaseName, projectName + "." + rawExt, gridFSName, rawFile, errMsg))
+					if (!(success = manager->uploadFileAndCommit(databaseName, projectName + "." + rawExt, gridFSName, rawFile)))
 					{
-						repoError << "Failed to save original file into the database: " << errMsg;
+						errMsg = "Failed to save original file into file storage: " + gridFSName;
+						repoError << errMsg;
 					}
 				}
 				else
@@ -1211,7 +1215,7 @@ bool RepoScene::loadScene(
 	//Get the relevant nodes from the scene graph using the unique IDs stored in this revision node
 	RepoBSON idArray = revNode->getObjectField(REPO_NODE_REVISION_LABEL_CURRENT_UNIQUE_IDS);
 	std::vector<RepoBSON> nodes = handler->findAllByUniqueIDs(
-		databaseName, projectName + "." + sceneExt, idArray);
+		databaseName, projectName + "." + sceneExt, idArray, !loadExtFiles);
 
 	repoInfo << "# of nodes in this unoptimised scene = " << nodes.size();
 
@@ -1446,33 +1450,42 @@ bool RepoScene::populate(
 	//Make sure it is propagated into the repoScene if it exists in revision node
 
 	if (g.references.size()) worldOffset.clear();
-	for (const auto &node : g.references)
+	if (!ignoreReferenceNodes)
 	{
-		ReferenceNode* reference = (ReferenceNode*)node;
-
-		//construct a new RepoScene with the information from reference node and append this g to the Scene
-		std::string spDbName = reference->getDatabaseName();
-		if (spDbName.empty()) spDbName = databaseName;
-		RepoScene *refg = new RepoScene(spDbName, reference->getProjectName(), sceneExt, revExt);
-		if (reference->useSpecificRevision())
-			refg->setRevision(reference->getRevisionID());
-		else
-			refg->setBranch(reference->getRevisionID());
-
-		//Try to load the stash first, if fail, try scene.
-		if (refg->loadStash(handler, errMsg) || refg->loadScene(handler, errMsg))
+		for (const auto &node : g.references)
 		{
-			g.referenceToScene[reference->getSharedID()] = refg;
-			auto refOffset = refg->getWorldOffset();
-			if (!worldOffset.size())
+			ReferenceNode* reference = (ReferenceNode*)node;
+
+			//construct a new RepoScene with the information from reference node and append this g to the Scene
+			std::string spDbName = reference->getDatabaseName();
+			if (spDbName.empty()) spDbName = databaseName;
+			RepoScene *refg = new RepoScene(spDbName, reference->getProjectName(), sceneExt, revExt);
+			if (reference->useSpecificRevision())
+				refg->setRevision(reference->getRevisionID());
+			else
+				refg->setBranch(reference->getRevisionID());
+
+			if (!loadExtFiles) {
+				refg->skipLoadingExtFiles();
+			}
+				
+
+			//Try to load the stash first, if fail, try scene.
+			if (loadExtFiles && refg->loadStash(handler, errMsg) || refg->loadScene(handler, errMsg))
 			{
-				worldOffset = refOffset;
+				g.referenceToScene[reference->getSharedID()] = refg;
+				auto refOffset = refg->getWorldOffset();
+				if (!worldOffset.size())
+				{
+					worldOffset = refOffset;
+				}
+			}
+			else {
+				repoWarning << "Failed to load reference node for ref ID" << reference->getUniqueID() << ": " << errMsg;
 			}
 		}
-		else{
-			repoWarning << "Failed to load reference node for ref ID" << reference->getUniqueID() << ": " << errMsg;
-		}
 	}
+	
 	repoTrace << "World Offset = [" << worldOffset[0] << " , " << worldOffset[1] << ", " << worldOffset[2] << " ]";
 	//Now that we know the world Offset, make sure the referenced scenes are shifted accordingly
 	for (const auto &node : g.references)
@@ -1540,26 +1553,6 @@ void RepoScene::populateAndUpdate(
 	addNodeToScene(gType, references, errMsg, &(instance.references));
 	addNodeToScene(gType, unknowns, errMsg, &(instance.unknowns));
 
-	validateScene();
-}
-
-void RepoScene::validateScene()
-{
-	//Check all meshes are triangulated
-	bool invalidMesh = false;
-	for (const auto &meshNode : graph.meshes)
-	{
-		auto mesh = dynamic_cast<const MeshNode*>(meshNode);
-		for (const auto face : mesh->getFaces())
-		{
-			if (invalidMesh = (face.size() != 3))
-				break;
-		}
-		if (invalidMesh) break;
-	}
-
-	if (invalidMesh)
-		setHasInvalidMeshes();
 }
 
 void RepoScene::reorientateDirectXModel()

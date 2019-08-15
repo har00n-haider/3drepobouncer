@@ -22,7 +22,7 @@
 
 //Test Database address
 const static std::string REPO_GTEST_DBADDRESS = "localhost";
-const static uint32_t    REPO_GTEST_DBPORT = 27017;
+const static int REPO_GTEST_DBPORT = 27017;
 const static std::string REPO_GTEST_AUTH_DATABASE = "admin";
 const static std::string REPO_GTEST_DBUSER = "testUser";
 const static std::string REPO_GTEST_DBPW = "3drepotest";
@@ -33,6 +33,8 @@ const static std::string REPO_GTEST_DBNAME2_PROJ = "sphere";
 const static std::string REPO_GTEST_DBNAME1_FED = "fedTest";
 const static std::string REPO_GTEST_DBNAME_ROLEUSERTEST = "sampleDataRWRolesUsers";
 
+const static std::string connectionConfig = "config/config.json";
+
 const static std::string clientExe = "3drepobouncerClient";
 const static std::string simpleModel = "cube.obj";
 const static std::string texturedModel = "texturedPlane.dae";
@@ -40,6 +42,10 @@ const static std::string missingNodesModel = "Wall.ifc";
 const static std::string texturedModel2 = "texturedPlane2.dae"; //With Texture
 const static std::string badExtensionFile = "cube.exe";
 const static std::string ifcModel = "duplex.ifc";
+const static std::string dgnModel = "sample.dgn";
+const static std::string rvtModel = "sample.rvt";
+const static std::string rvtNo3DViewModel = "sample_bad.rvt";
+const static std::string unsupportedFBXVersion = "unsupported.FBX";
 
 const static std::string emptyFile = "empty.json";
 const static std::string emptyJSONFile = "empty2.json";
@@ -136,6 +142,11 @@ static std::string getDataPath(
 		returnPath = fullPath.string();
 	}
 	return returnPath;
+}
+
+
+static std::string getConnConfig() {
+	return getDataPath(connectionConfig);
 }
 
 /*

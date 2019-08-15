@@ -2,10 +2,12 @@ build
 log
 
 tools/testScripts
+tools/bouncer_worker/toy
 
 #nodeJS stuff
 tools/bouncer_worker/config.js
 tools/bouncer_worker/node_modules
+tools/bouncer_worker/config.json
 
 #Windows junk
 *.vcxproj*
@@ -17,12 +19,19 @@ tools/bouncer_worker/node_modules
 *.sdf
 resource.h
 
+#OSX junk
+*.DS_Store
+
 # Sublime junk
 .tags
 .tags_sorted_by_file
 
 #vim junk
 *.swp
+*~
+
+#sed junk
+*.bak
 
 #mongo junk
 *.lock
@@ -31,3 +40,7 @@ Debug
 x64
 sandbox
 sandbox/sandbox.cpp
+*.db
+*.opendb
+tools/bouncer_worker/log.log
+*.json

@@ -46,7 +46,8 @@ namespace repo{
 			* Generate database statistics and print the result in the given filepath
 			* @params outputFilePath
 			*/
-			void getDatabaseStatistics(const std::string &outputFilePath);
+			void getDatabaseStatistics(
+				const std::string &outputFilePath);
 
 		private:
 			repo::core::handler::AbstractDatabaseHandler *handler;

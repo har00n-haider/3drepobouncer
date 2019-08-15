@@ -21,8 +21,8 @@
 module.exports = function(dbConfig, modelDir, username, database, project, skipPostProcessing){
 
 	const mongodb = require('mongodb');
-	const GridFSBucket = mongodb.GridFSBucket;
 	const MongoClient = mongodb.MongoClient;
+	const GridFSBucket = mongodb.GridFSBucket
 	const fs = require('fs');
 	skipPostProcessing = skipPostProcessing || {};
 
@@ -34,27 +34,27 @@ module.exports = function(dbConfig, modelDir, username, database, project, skipP
 
 		db = _db.db(database);
 		return importJSON();
-
 	}).then(() => {
 
+		const promises = [];
 
-		return !skipPostProcessing.renameStash && Promise.all([
-			renameStash(db, `${project}.stash.json_mpc`),
-			renameStash(db, `${project}.stash.src`),
-			renameStash(db, `${project}.stash.unity3d`)
-		]);
+		if(!skipPostProcessing.renameStash) {
+			promises.push(renameStash(db, `${project}.stash.json_mpc`));
+			promises.push(renameStash(db, `${project}.stash.src`));
+			promises.push(renameStash(db, `${project}.stash.unity3d`));
+			promises.push(renameUnityAssetList(db, database, project));
+		}
 
-	}).then(() => {
+		if(!skipPostProcessing.history)
+			promises.push(updateHistoryAuthorAndDate(db));
+		if(!skipPostProcessing.issues)
+			promises.push(updateAuthorAndDate(db, "issues"));
+		if(!skipPostProcessing.risks)
+			promises.push(updateAuthorAndDate(db, "risks"));
+		if(!skipPostProcessing.history)
+			promises.push(renameGroups(db));
 
-		return !skipPostProcessing.history && updateHistoryAuthorAndDate(db);
-
-	}).then(() => {
-
-		return !skipPostProcessing.issues && updateIssueAuthorAndDate(db);
-
-	}).then(() => {
-
-		return !skipPostProcessing.groups && renameGroups(db);
+		return Promise.all(promises);
 
 	}).then(() => {
 
@@ -65,9 +65,8 @@ module.exports = function(dbConfig, modelDir, username, database, project, skipP
 
 	function importJSON(){
 		let importCollectionFiles = {};
-		
+
 		fs.readdirSync(`${__dirname}/${modelDir}`)
-		.filter(file => file.endsWith('.bson'))
 		.forEach(file => {
 			// remove '.json' in string
 			let collectionName = file.split('.');
@@ -91,9 +90,8 @@ module.exports = function(dbConfig, modelDir, username, database, project, skipP
 			let filename = importCollectionFiles[collection];
 
 			promises.push(new Promise((resolve, reject) => {
-
-				require('child_process').exec(
-				`mongorestore -j 8 --host ${hostString} --username ${dbUsername} --password ${dbPassword} --authenticationDatabase admin --db ${database} --collection ${collection} --writeConcern '${JSON.stringify(writeConcern)}' ${__dirname}/${modelDir}/${filename}`,
+				var cmd = `mongoimport -j 8 --host ${hostString} --username ${dbUsername} --password ${dbPassword} --authenticationDatabase admin --db ${database} --collection ${collection} --writeConcern '${JSON.stringify(writeConcern)}' --file ${__dirname}/${modelDir}/${filename}`;
+				require('child_process').exec(cmd,
 				{
 					cwd: __dirname
 				}, function (err) {
@@ -110,76 +108,25 @@ module.exports = function(dbConfig, modelDir, username, database, project, skipP
 		return Promise.all(promises);
 	}
 
-	function renameStash(db, bucketName){
-
-		let bucket = new GridFSBucket(db, { bucketName });
-
-		return new Promise((resolve, reject) => {
-
-			let renamePromises = [];
-
-			bucket.find().forEach(file => {
-
-				let newFileName = file.filename;
-				newFileName = newFileName.split('/');
-				newFileName[1] = database;
-				newFileName[2] = project;
-				newFileName = newFileName.join('/');
-				file.filename = newFileName;
-
-				renamePromises.push(
-
-					new Promise((resolve, reject) => {
-
-						bucket.rename(file._id, newFileName, function(err) {
-							if(err){
-								reject(err);
-							} else {
-								resolve();
-							}
-
-						});
-					})
-
-				);
-
-				// unityAssets.json have the path baked into the file :(
-				if(newFileName.endsWith('unityAssets.json')){
-					renamePromises.push(renameUnityAsset(bucket, file));
-				}
-
-			}, err => {
-				if(err){
-					reject(err);
-				} else {
-					Promise.all(renamePromises)
-						.then(() => resolve())
-						.catch(err => reject(err));
-				}
-			});
-
-		});
-	}
 
 	function updateHistoryAuthorAndDate(db){
-		
+
 		const collection = db.collection(`${project}.history`);
 		const update = {
 			'$set':{
-				'author': username,
-				'timestamp': new Date()
+				'author': username
 			}
 		};
 
 		return collection.updateMany({}, update);
 	}
 
-	function updateIssueAuthorAndDate(db){
+	function updateAuthorAndDate(db, ext){
 
 		return new Promise((resolve, reject) => {
 
 			const promises = [];
-			const collection = db.collection(`${project}.issues`);
+			const collection = db.collection(`${project}.${ext}`);
 
 			collection.find().forEach(issue => {
 
@@ -202,56 +149,132 @@ module.exports = function(dbConfig, modelDir, username, database, project, skipP
 		});
 	}
 
+	function renameStash(db, bucketName){
+
+		let bucket = new GridFSBucket(db, { bucketName });
+
+		return new Promise((resolve, reject) => {
+
+			let renamePromises = [];
+
+			bucket.find().forEach(file => {
+
+				let newFileName = file.filename.split('/');
+				if(newFileName.length >= 3) {
+					newFileName[1] = database;
+					newFileName[2] = project;
+					newFileName = newFileName.join('/');
+					file.filename = newFileName;
+
+					renamePromises.push(
+
+						new Promise((resolve, reject) => {
+
+							bucket.rename(file._id, newFileName, function(err) {
+								if(err){
+									reject(err);
+								} else {
+									resolve();
+								}
+
+							});
+						})
+
+					);
+
+
+					// unityAssets.json have the path baked into the file :(
+					if(newFileName.endsWith('unityAssets.json')){
+						renamePromises.push(renameUnityAsset(bucket, file));
+					}
+				}
+
+			}, err => {
+				if(err){
+					reject(err);
+				} else {
+					Promise.all(renamePromises)
+						.then(() => resolve())
+						.catch(err => reject(err));
+				}
+			});
+
+		});
+	}
+
 	function renameGroups(db){
-		
+
+		const subModelNameToOldID = {
+			"Lego_House_Architecture" : "a29d06a0-51b7-45d7-9d33-41a62e036e5b",
+			"Lego_House_Landscape" : "76fa299d-b626-48c5-9327-05fa371b3a49",
+			"Lego_House_Structure" : "7ea2eb1f-3ba6-4f13-b6e5-a1b53f17d0c6"
+		};
+
 		return new Promise((resolve, reject) => {
 
 			const updateGroupPromises = [];
 			const collection = db.collection(`${project}.groups`);
 
-			collection.find().forEach(group => {
 
-				group.objects && group.objects.forEach(obj => {
-
-					const updateObjectPromises = [];
-					obj.account = database;
-					obj.model = project;
-					
-					//if model is fed model, then model id of a group should be 
-					//one of the sub models instead of the id of the fed model itself
-					updateObjectPromises.push(
-						db.collection('settings').findOne({ _id: project }).then(setting => {
-							const subModels = setting.subModels;
-							if(subModels && subModels.length){
-								return Promise.all(
-									subModels.map(subModel => 
-										db.collection(`${subModel.model}.scene`).count({ shared_id: obj.shared_id }).then(count => {
-											if(count){
-												obj.model = subModel.model;
-											}
-										})
-									)
-								);
+			return db.collection("settings").findOne({_id: project}).then(setting => {
+				if(!setting) {
+					return reject("Model "+ setting +" not found");
+				}
+				const oldIdToNewId = {};
+				let subModelPromise;
+				if(setting.subModels) {
+					const subModelList = [];
+					setting.subModels.forEach((subModel) => {
+						subModelList.push(subModel.model);
+					});
+					subModelPromise = db.collection("settings").find({_id: {$in: subModelList}}).toArray();
+					subModelPromise.then((arr) => {
+						arr.forEach( (subModelSetting) => {
+							if(subModelNameToOldID[subModelSetting.name]) {
+								oldIdToNewId[subModelNameToOldID[subModelSetting.name]] = subModelSetting._id;
 							}
+						});
+					});
+				}
+				else {
+					subModelPromise = Promise.resolve();
+				}
 
-						})
-					);					
+				return subModelPromise.then(() => {
+					return collection.find().forEach(group => {
+						group.objects && group.objects.forEach(obj => {
+							const updateObjectPromises = [];
+							obj.account = database;
 
-					updateGroupPromises.push(
-						Promise.all(updateObjectPromises).then(() => collection.updateOne({ _id: group._id }, group))
-					);
+							//if model is fed model, then model id of a group should be
+							//one of the sub models instead of the id of the fed model itself
+							if(oldIdToNewId[obj.model]) {
+								obj.model = oldIdToNewId[obj.model];
+							}
+							else {
+								obj.model = project;
+							}
+						});
+
+						return collection.updateOne({ _id: group._id }, group);
+
+
+					}, function done(err) {
+						if(err){
+							reject(err);
+						} else {
+							Promise.all(updateGroupPromises)
+								.then(() => resolve())
+								.catch(err => reject(err));
+						}
+					});
 
 				});
 
-			}, function done(err) {
-				if(err){
-					reject(err);
-				} else {
-					Promise.all(updateGroupPromises)
-						.then(() => resolve())
-						.catch(err => reject(err));
-				}
+
+
 			});
+
 		});
 
 	}
@@ -268,7 +291,7 @@ module.exports = function(dbConfig, modelDir, username, database, project, skipP
 
 			function _finishDownload(){
 				const unityAsset = JSON.parse(Buffer.concat(bufs));
-				
+
 				unityAsset.assets = unityAsset.assets || [];
 				unityAsset.jsonFiles = unityAsset.jsonFiles || [];
 
@@ -284,11 +307,10 @@ module.exports = function(dbConfig, modelDir, username, database, project, skipP
 				unityAsset.database = database;
 				unityAsset.model = project;
 
-				//console.log(unityAsset);
 
 				//drop the old one
 				bucket.delete(file._id, function(err){
-					
+
 					if(err){
 						return reject(err);
 					}
@@ -300,7 +322,6 @@ module.exports = function(dbConfig, modelDir, username, database, project, skipP
 						if(err){
 							reject(err)
 						} else {
-							//console.log('finish writing to file' + file._id)
 							resolve();
 						}
 					});
@@ -311,4 +332,42 @@ module.exports = function(dbConfig, modelDir, username, database, project, skipP
 		});
 	}
 
+	function renameUnityAssetList(
+		db,
+		database,
+		model
+	){
+		return new Promise((resolve, reject) => {
+
+			const collection = db.collection(`${model}.stash.unity3d`);
+			const promises = [];
+			collection.find().forEach(entry => {
+				entry.database = database;
+				entry.model = model;
+				const prefix = `/${database}/${model}/`;
+				for(let i = 0; i < entry.jsonFiles.length; ++i) {
+					const oldDir = entry.jsonFiles[i];
+					const dirArr = oldDir.split("/");
+					entry.jsonFiles[i] = prefix + dirArr[dirArr.length - 1];
+				}
+				for(let i = 0; i < entry.assets.length; ++i) {
+                	const oldDir = entry.assets[i];
+                    const dirArr = oldDir.split("/");
+                    entry.assets[i] = prefix + dirArr[dirArr.length - 1];
+				}
+
+				promises.push(collection.updateOne({_id: entry._id}, entry));
+			}, (err) => {
+				if(err)
+					reject(err);
+				else {
+					Promise.all(promises)
+						.then(() => resolve())
+						.catch(err => reject(err));
+				}
+
+
+			});
+		});
+	}
 }

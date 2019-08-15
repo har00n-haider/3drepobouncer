@@ -44,7 +44,7 @@ std::string helpInfo()
 	ss << cmdGenStash << "\tGenerate Stash for all databases. (args: [repo|gltf|src|tree])\n";
 	ss << cmdGenStashSpecific << "\tGenerate Stash for specific list of databases. (args: <file with list of databases> [repo|gltf|src|tree])\n";
 	ss << cmdGetUserList << "\tGenerate a list of users and their contact information\n";
-	ss << cmdGenDBStats << "\tCreate a database statistics report\n";
+	ss << cmdGenDBStats << "\tCreate a database statistics report (args: <output file>)\n";
 	ss << cmdTestConn << "\t\tTest the client and database connection is working. (args: none)\n";
 	ss << cmdVersion << "[-v]\tPrints the version of Repo Bouncer Client/Library\n";
 
@@ -280,7 +280,7 @@ int32_t generateStash(
 				if (node.getUploadStatus() == repo::core::model::RevisionNode::UploadStatus::COMPLETE)
 				{
 					try{
-						repo::core::model::RepoScene *scene = controller->fetchScene(token, database, project, node.getUniqueID().toString(), false, stashOnly);
+						repo::core::model::RepoScene *scene = controller->fetchScene(token, database, project, node.getUniqueID().toString(), false, stashOnly, true);
 						if (scene->getAllReferences(repo::core::model::RepoScene::GraphType::DEFAULT).size()) break; //This project is a federation
 						if (scene)
 						{
@@ -334,10 +334,11 @@ int32_t getDBStats(
 	if (command.nArgcs < 1)
 	{
 		repoLogError("Number of arguments mismatch! " + cmdGenDBStats
-			+ " requires 1 arguments: <output file path>");
+			+ " requires 1 arguments: <output file path> [file with list of paid teamspaces]");
 		return REPOERR_INVALID_ARG;
 	}
 
 	controller->getDatabaseStatistics(token, command.args[0]);
+
 	return REPOERR_OK;
 }

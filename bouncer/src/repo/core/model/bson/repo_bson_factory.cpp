@@ -260,6 +260,56 @@ MetadataNode RepoBSONFactory::makeMetaDataNode(
 	return MetadataNode(builder.obj());
 }
 
+MetadataNode RepoBSONFactory::makeMetaDataNode(
+	const std::map<std::string, std::string>  &meta,
+	const std::string               &name,
+	const std::vector<repo::lib::RepoUUID>     &parents,
+	const int                       &apiLevel)
+{
+	RepoBSONBuilder builder, metaBuilder;
+	// Compulsory fields such as _id, type, api as well as path
+	// and optional name
+	auto defaults = appendDefaults(REPO_NODE_TYPE_METADATA, apiLevel, repo::lib::RepoUUID::createUUID(), name, parents);
+	builder.appendElements(defaults);
+
+	//check keys and values have the same sizes
+
+
+	for (const auto &entry : meta)
+	{
+		std::string key = sanitiseKey(entry.first);
+		std::string value = entry.second;
+
+		if (!key.empty() && !value.empty())
+		{
+			//Check if it is a number, if it is, store it as a number
+
+			try {
+				long long valueInt = boost::lexical_cast<long long>(value);
+				metaBuilder << key << valueInt;
+			}
+			catch (boost::bad_lexical_cast &)
+			{
+				//not an int, try a double
+
+				try {
+					double valueFloat = boost::lexical_cast<double>(value);
+					metaBuilder << key << valueFloat;
+				}
+				catch (boost::bad_lexical_cast &)
+				{
+					//not an int or float, store as string
+					metaBuilder << key << value;
+				}
+			}
+		}
+	}
+
+	builder << REPO_NODE_LABEL_METADATA << metaBuilder.obj();
+
+	return MetadataNode(builder.obj());
+}
+
 MeshNode RepoBSONFactory::makeMeshNode(
 	const std::vector<repo::lib::RepoVector3D>                  &vertices,
 	const std::vector<repo_face_t>                    &faces,
@@ -269,12 +319,13 @@ MeshNode RepoBSONFactory::makeMeshNode(
 	const std::vector<repo_color4d_t>                 &colors,
 	const std::vector<std::vector<float>>             &outline,
 	const std::string                           &name,
+	const std::vector<repo::lib::RepoUUID>      &parents,
 	const int                                   &apiLevel)
 {
 	RepoBSONBuilder builder;
 	uint64_t bytesize = 0; //track the (approximate) size to know when we need to offload to gridFS
 	repo::lib::RepoUUID uniqueID = repo::lib::RepoUUID::createUUID();
-	auto defaults = appendDefaults(REPO_NODE_TYPE_MESH, apiLevel, repo::lib::RepoUUID::createUUID(), name, std::vector<repo::lib::RepoUUID>(), uniqueID);
+	auto defaults = appendDefaults(REPO_NODE_TYPE_MESH, apiLevel, repo::lib::RepoUUID::createUUID(), name, parents, uniqueID);
 	bytesize += defaults.objsize();
 	builder.appendElements(defaults);
 
@@ -635,6 +686,20 @@ RepoRole RepoBSONFactory::_makeRepoRole(
 	return RepoRole(builder.obj());
 }
 
+RepoRef RepoBSONFactory::makeRepoRef(
+	const std::string &fileName,
+	const RepoRef::RefType &type,
+	const std::string &link,
+	const uint32_t size) {
+
+	repo::core::model::RepoBSONBuilder builder;
+	builder.append(REPO_LABEL_ID, fileName);
+	builder.append(REPO_REF_LABEL_TYPE, RepoRef::convertTypeAsString(type));
+	builder.append(REPO_REF_LABEL_LINK, link);
+	builder.append(REPO_REF_LABEL_SIZE, (unsigned int) size);
+	return RepoRef(builder.obj());
+}
+
 RepoRoleSettings RepoBSONFactory::makeRepoRoleSettings(
 	const std::string &uniqueRoleName,
 	const std::string &color,
@@ -712,6 +777,44 @@ RepoUser RepoBSONFactory::makeRepoUser(
 		builder.appendArrayPair(REPO_USER_LABEL_ROLES, roles, REPO_USER_LABEL_DB, REPO_USER_LABEL_ROLE);
 
 	return RepoUser(builder.obj());
+}
+
+RepoUnityAssets RepoBSONFactory::makeRepoUnityAssets(
+	const repo::lib::RepoUUID                   &revisionID,
+	const std::vector<std::string>              &assets,
+	const std::string                           &database,
+	const std::string                           &model,
+	const std::vector<double>                   &offset,
+	const std::vector<std::string>              &vrAssetFiles,
+	const std::vector<std::string>              &iosAssetFiles,
+	const std::vector<std::string>              &jsonFiles)
+{
+	RepoBSONBuilder builder;
+
+	builder.append(REPO_LABEL_ID, revisionID);
+
+	if (assets.size())
+		builder.appendArray(REPO_UNITY_ASSETS_LABEL_ASSETS, assets);
+
+	if (!database.empty())
+		builder << REPO_LABEL_DATABASE << database;
+
+	if (!model.empty())
+		builder << REPO_LABEL_MODEL << model;
+
+	if (offset.size())
+		builder.appendArray(REPO_UNITY_ASSETS_LABEL_OFFSET, offset);
+
+	if (vrAssetFiles.size())
+		builder.appendArray(REPO_UNITY_ASSETS_LABEL_VRASSETS, vrAssetFiles);
+
+	if (iosAssetFiles.size())
+		builder.appendArray(REPO_UNITY_ASSETS_LABEL_IOSASSETS, iosAssetFiles);
+
+	if (jsonFiles.size())
+		builder.appendArray(REPO_UNITY_ASSETS_LABEL_JSONFILES, jsonFiles);
+
+	return RepoUnityAssets(builder.obj());
 }
 
 ReferenceNode RepoBSONFactory::makeReferenceNode(

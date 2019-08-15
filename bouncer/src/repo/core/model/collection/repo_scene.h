@@ -24,6 +24,7 @@
 #include <unordered_map>
 
 #include "../../handler/repo_database_handler_abstract.h"
+#include "../../handler/fileservice/repo_file_manager.h"
 #include "../bson/repo_node.h"
 #include "../bson/repo_node_revision.h"
 
@@ -57,7 +58,7 @@ namespace repo{
 				static const std::vector<std::string> collectionsInProject;
 				static const uint16_t REPO_SCENE_TEXTURE_BIT = 0x0001;
 				static const uint16_t REPO_SCENE_ENTITIES_BIT = 0x0002;
-				static const uint16_t REPO_SCENE_INVALID_MESH_BIT = 0x0003;
+				const static uint32_t REPO_SCENE_MAX_NODES = 1030000;
 			public:
 
 				/**
@@ -153,37 +154,27 @@ namespace repo{
 					return !status;
 				}
 
+				void ignoreReferenceScene() {
+					ignoreReferenceNodes = true;
+				}
+
+				void skipLoadingExtFiles() {
+					loadExtFiles = false;
+				}
+
 				/**
 				* Check if default scene graph is missing texture
 				* @return returns true if missing textures
 				*/
 				bool isMissingTexture() const{
-					return status & REPO_SCENE_TEXTURE_BIT;
+					return (bool)status & REPO_SCENE_TEXTURE_BIT;
 				}
-
-				/**
-				* Check if default scene graph contains invalid meshes
-				* This is usually caused non triangulated faces
-				* @return returns true invalid meshes exists
-				*/
-				bool hasInvalidMeshes() const{
-					return status & REPO_SCENE_INVALID_MESH_BIT;
-				}
-
 				/**
 				* Check if default scene graph is missing some nodes due to failed import
 				* @return returns true if missing nodes
 				*/
-				bool isMissingNodes() const{
-					return status & REPO_SCENE_ENTITIES_BIT;
-				}
-
-				/**
-				* Flag missing texture bit on status.
-				*/
-				void setHasInvalidMeshes(){
-					status |= REPO_SCENE_INVALID_MESH_BIT;
-				}
+				bool isMissingNodes() const;
+	
 
 				/**
 				* Flag missing texture bit on status.
@@ -259,6 +250,7 @@ namespace repo{
 				*/
 				bool commit(
 					repo::core::handler::AbstractDatabaseHandler *handler,
+					repo::core::handler::fileservice::FileManager *manager,
 					std::string &errMsg,
 					const std::string &userName,
 					const std::string &message = std::string(),
@@ -291,6 +283,14 @@ namespace repo{
 				std::string getDatabaseName() const
 				{
 					return databaseName;
+				}
+
+				/**
+				* Check if this scene exceeds the max amount of nodes
+				*/
+				bool exceedsMaximumNodes() const
+				{
+					return graph.nodesByUniqueID.size() > REPO_SCENE_MAX_NODES;
 				}
 
 				/**
@@ -1015,6 +1015,7 @@ namespace repo{
 				*/
 				bool commitRevisionNode(
 					repo::core::handler::AbstractDatabaseHandler *handler,
+					repo::core::handler::fileservice::FileManager *manager,
 					std::string &errMsg,
 					RevisionNode *&newRevNode,
 					const std::string &userName,
@@ -1090,11 +1091,6 @@ namespace repo{
 				void shiftModel(
 					const std::vector<double> &offset);
 
-				/**
-				* Valid the scene, flag any necessary flags if 
-				* errors are found
-				*/
-				void validateScene();
 
 				/*
 				* ---------------- Scene utilities ----------------
@@ -1141,7 +1137,9 @@ namespace repo{
 
 				repoGraphInstance graph; //current state of the graph, given the branch/revision
 				repoGraphInstance stashGraph; //current state of the optimized graph, given the branch/revision
-				uint16_t status; //health of the scene, 0 denotes healthy
+				uint16_t status = 0; //health of the scene, 0 denotes healthy
+				bool ignoreReferenceNodes = false;
+				bool loadExtFiles = true;
 			};
 		}//namespace graph
 	}//namespace manipulator

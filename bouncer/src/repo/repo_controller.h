@@ -37,6 +37,7 @@
 #include "core/model/collection/repo_scene.h"
 #include "lib/datastructure/repo_structs.h"
 #include "lib/repo_listener_abstract.h"
+#include "lib/repo_config.h"
 #include "manipulator/modelconvertor/import/repo_model_import_config.h"
 #include "repo_bouncer_global.h"
 
@@ -70,51 +71,11 @@ namespace repo{
 		/**
 			* Connect to a mongo database, authenticate by the admin database
 			* @param errMsg error message if failed
-			* @param address address of the database
-			* @param port port number
-			* @param dbName name of the database within mongo to connect to
-			* @param username user login name
-			* @param password user password
-			* @param pwDigested is given password digested (default: false)
-			* @return returns a void pointer to a token
+			* @param config RepoConfig instance containing all connection information
 			*/
-		RepoToken* authenticateMongo(
+		RepoToken* init(
 			std::string       &errMsg,
-			const std::string &address,
-			const uint32_t    &port,
-			const std::string &dbName,
-			const std::string &username,
-			const std::string &password,
-			const bool        &pwDigested = false
-			);
-
-		/**
-		* Connect to a mongo database, authenticate by the admin database
-		* @param errMsg error message if failed
-		* @param token authentication token
-		*/
-		bool authenticateMongo(
-			std::string       &errMsg,
-			const RepoToken   *token
-			);
-
-		/**
-			* Connect to a mongo database, authenticate by the admin database
-			* @param errMsg error message if failed
-			* @param address address of the database
-			* @param port port number
-			* @param username user login name
-			* @param password user password
-			* @param pwDigested is given password digested (default: false)
-			* @return returns a void pointer to a token
-			*/
-		RepoToken* authenticateToAdminDatabaseMongo(
-			std::string       &errMsg,
-			const std::string &address,
-			const int         &port,
-			const std::string &username,
-			const std::string &password,
-			const bool        &pwDigested = false
+			const lib::RepoConfig  &config
 			);
 
 		/**
@@ -124,14 +85,6 @@ namespace repo{
 			* @param token token to the database
 			*/
 		void disconnectFromDatabase(const RepoToken* token);
-
-		/**
-			 * Checks whether given credentials permit successful connection to a
-			 * given database.
-			 * @param token token
-			 * @return returns true if successful, false otherwise
-			 */
-		bool testConnection(const RepoToken *token);
 
 		/*
 		*	------------- Token operations --------------
@@ -146,56 +99,12 @@ namespace repo{
 			RepoToken         *token,
 			const std::string &alias);
 
-		/**
-		* create a token base on the information given
-		*/
-		RepoToken* createToken(
-			const std::string &alias,
-			const std::string &address,
-			const int         &port,
-			const std::string &dbName,
-			const std::string &username,
-			const std::string &password
-			);
-
-		RepoToken* createToken(
-			const std::string &alias,
-			const std::string &address,
-			const int         &port,
-			const std::string &dbName,
-			const RepoController::RepoToken *token
-			);
-
-		/**
-		* Re-create a repo token given the serialised data
-		* @param data serialised data from serialiseToken()
-		* @return returns  RepoToken upon success
-		*/
-		RepoToken* createTokenFromSerialised(
-			const std::string &data) const;
 
 		/**
 		* Destroy token from memory
 		* @param token token to destroy
 		*/
 		void destroyToken(RepoToken* token);
-
-		void getInfoFromToken(
-			const RepoToken *token,
-			std::string     &alias,
-			std::string     &host,
-			uint32_t        &port,
-			std::string     &username,
-			std::string     &authDB
-			) const;
-
-		/**
-		* Serialise the given token
-		* @param token token
-		* @return return the token in serialised form
-		*/
-		std::string serialiseToken(
-			const RepoToken* token) const;
 
 		/*
 		*	------------- Database info lookup --------------
@@ -364,13 +273,6 @@ namespace repo{
 			const std::list<std::string> &databases);
 
 		/**
-			* Return host:port of the database connection that is associated with
-			* the given token
-			* @param token repo token
-			* @return return a string with "databaseAddress:port"
-			*/
-		std::string getHostAndPort(const RepoToken *token);
-		/**
 			* Get a list of Admin roles from the database
 			* @param token repo token to the database
 			* @return returns a vector of roles
@@ -403,19 +305,6 @@ namespace repo{
 		/*
 			*	---------------- Database Retrieval -----------------------
 			*/
-
-		/**
-		* Clean up any incomplete commits within the project
-		* @param token repo token to the database
-		* @param dbName name of the database
-		* @param projectName name of the project
-		*/
-		bool cleanUp(
-			const RepoToken                        *token,
-			const std::string                      &dbName,
-			const std::string                      &projectName
-			);
-
 		/**
 			* Retrieve a RepoScene with a specific revision loaded.
 			* @param token Authentication token
@@ -434,7 +323,9 @@ namespace repo{
 			const std::string    &project,
 			const std::string    &uuid = REPO_HISTORY_MASTER_BRANCH,
 			const bool           &headRevision = true,
-			const bool           &lightFetch = false);
+			const bool           &lightFetch = false,
+			const bool           &ignoreRefScene = false,
+			const bool           &skeletonFetch = false);
 
 		/**
 			* Save the files of the original model to a specified directory
@@ -485,7 +376,7 @@ namespace repo{
 		* @param  rawData data in the form of byte vector
 		* @param mimeType the MIME type of the data (optional)
 		*/
-		void insertBinaryFileToDatabase(
+		bool insertBinaryFileToDatabase(
 			const RepoToken            *token,
 			const std::string          &database,
 			const std::string          &collection,
@@ -790,6 +681,7 @@ namespace repo{
 			const RepoController::RepoToken                    *token,
 			repo::core::model::RepoScene *scene,
 			std::unordered_map<std::string, std::vector<uint8_t>> &jsonFiles,
+			repo::core::model::RepoUnityAssets &unityAssets,
 			std::vector<std::vector<uint16_t>> &serialisedFaceBuf,
 			std::vector<std::vector<std::vector<float>>> &idMapBuf,
 			std::vector<std::vector<std::vector<repo_mesh_mapping_t>>> &meshMappings);
@@ -804,6 +696,7 @@ namespace repo{
 			*/
 		repo::core::model::RepoScene* loadSceneFromFile(
 			const std::string &filePath,
+			uint8_t           &err,
 			const bool &applyReduction = true,
 			const bool &rotateModel = false,
 			const repo::manipulator::modelconvertor::ModelImportConfig *config

@@ -27,6 +27,7 @@
 
 #include "../../../../repo_test_utils.h"
 #include "../../../../repo_test_database_info.h"
+#include "../../../../repo_test_fileservice_info.h"
 
 using namespace repo::core::model;
 
@@ -52,6 +53,28 @@ TEST(RepoSceneTest, Constructor)
 	RepoNodeSet empty;
 	std::vector<std::string> files;
 	RepoScene scene2(files, empty, empty, empty, empty, empty, empty);
+}
+
+TEST(RepoSceneTest, ConstructOrhpanMeshScene)
+{
+	RepoNodeSet empty, trans, meshes;
+	std::vector<std::string> files;
+
+	auto root = new TransformationNode(makeRandomNode(getRandomString(rand() % 100 + 1)));
+	trans.insert(root);
+
+	auto t1 = new TransformationNode(makeRandomNode(root->getSharedID(), getRandomString(rand() % 100 + 1) + root->getName()));
+	trans.insert(t1);
+	
+	auto m1 = new MeshNode();
+	auto m2 = new MeshNode();
+	auto m3 = new MeshNode();
+	meshes.insert(m1);
+	meshes.insert(m2);
+	meshes.insert(m3);
+
+	RepoScene scene(files, empty, meshes, empty, empty, empty, trans);
+	EXPECT_TRUE(scene.isMissingNodes());	
 }
 
 TEST(RepoSceneTest, FilterNodesByType)
@@ -267,12 +290,12 @@ TEST(RepoSceneTest, CommitScene)
 	std::string commitUser = "me";
 
 	//Commiting an empty scene should fail (fails on empty project/database name)
-	EXPECT_FALSE(scene.commit(getHandler(), errMsg, commitUser));
+	EXPECT_FALSE(scene.commit(getHandler(), getFileManager(), errMsg, commitUser));
 	EXPECT_FALSE(errMsg.empty());
 	errMsg.clear();
 
 	scene.setDatabaseAndProjectName("sceneCommit", "test1");
-	EXPECT_FALSE(scene.commit(getHandler(), errMsg, commitUser));
+	EXPECT_FALSE(scene.commit(getHandler(), getFileManager(), errMsg, commitUser));
 	EXPECT_FALSE(errMsg.empty());
 	errMsg.clear();
 
@@ -294,14 +317,14 @@ TEST(RepoSceneTest, CommitScene)
 
 	RepoScene scene2(std::vector<std::string>(), empty, meshNodes, empty, empty, empty, transNodes);
 	scene2.setDatabaseAndProjectName("sceneCommit", "test2");
-	EXPECT_FALSE(scene2.commit(nullptr, errMsg, commitUser));
+	EXPECT_FALSE(scene2.commit(nullptr, nullptr, errMsg, commitUser));
 	EXPECT_FALSE(errMsg.empty());
 	errMsg.clear();
 
 	std::string commitMsg = "this is a commit message for this commit.";
 	std::string commitTag = "test";
 
-	EXPECT_TRUE(scene2.commit(getHandler(), errMsg, commitUser, commitMsg, commitTag));
+	EXPECT_TRUE(scene2.commit(getHandler(), getFileManager(), errMsg, commitUser, commitMsg, commitTag));
 	EXPECT_TRUE(errMsg.empty());
 
 	EXPECT_TRUE(scene2.isRevisioned());
@@ -341,7 +364,7 @@ TEST(RepoSceneTest, CommitStash)
 
 	RepoScene scene2(std::vector<std::string>(), empty, meshNodes, empty, empty, empty, transNodes);
 	scene2.setDatabaseAndProjectName("stashCommit", "test");
-	ASSERT_TRUE(scene2.commit(getHandler(), errMsg, "blah"));
+	ASSERT_TRUE(scene2.commit(getHandler(), getFileManager(), errMsg, "blah"));
 	errMsg.clear();
 	//Empty stash shouldn't have commit but should return true(apparently)
 	EXPECT_TRUE(scene2.commitStash(getHandler(), errMsg));
@@ -440,7 +463,7 @@ TEST(RepoSceneTest, getRevisionProperties)
 
 	RepoScene scene2(std::vector<std::string>(), empty, meshNodes, empty, empty, empty, transNodes);
 	scene2.setDatabaseAndProjectName("sceneCommit", "test2");
-	ASSERT_TRUE(scene2.commit(getHandler(), errMsg, commitUser, commitMessage, commitTag));
+	ASSERT_TRUE(scene2.commit(getHandler(), getFileManager(), errMsg, commitUser, commitMessage, commitTag));
 
 	scene2.setWorldOffset(offset);
 	EXPECT_EQ(scene2.getOwner(), commitUser);

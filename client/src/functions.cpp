@@ -21,14 +21,15 @@
 
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/filesystem.hpp>
 
+
 static const std::string FBX_EXTENSION = ".FBX";
 
-static const std::string cmdCleanProj = "clean"; //clean up a specified project
 static const std::string cmdCreateFed = "genFed"; //create a federation
 static const std::string cmdGenStash = "genStash";   //test the connection
 static const std::string cmdGetFile = "getFile"; //download original file
@@ -41,11 +42,10 @@ std::string helpInfo()
 {
 	std::stringstream ss;
 
-	ss << cmdGenStash << "\tGenerate Stash for a project. (args: database project [repo|gltf|src|tree])\n";
+	ss << cmdGenStash << "\tGenerate Stash for a project. (args: database project [repo|gltf|src|tree] [all|revId])\n";
 	ss << cmdGetFile << "\t\tGet original file for the latest revision of the project (args: database project dir)\n";
 	ss << cmdImportFile << "\t\tImport file to database. (args: {file database project [dxrotate] [owner] [configfile]} or {-f parameterFile} )\n";
 	ss << cmdCreateFed << "\t\tGenerate a federation. (args: fedDetails [owner])\n";
-	ss << cmdCleanProj << "\t\tClean up a specified project removing/repairing corrupted revisions. (args: database project)\n";
 	ss << cmdTestConn << "\t\tTest the client and database connection is working. (args: none)\n";
 	ss << cmdVersion << "[-v]\tPrints the version of Repo Bouncer Client/Library\n";
 
@@ -64,9 +64,7 @@ int32_t knownValid(const std::string &cmd)
 	if (cmd == cmdGenStash)
 		return 3;
 	if (cmd == cmdCreateFed)
-		return 1;
-	if (cmd == cmdCleanProj)
-		return 2;
+		return 1;	
 	if (cmd == cmdGetFile)
 		return 3;
 	if (cmd == cmdTestConn)
@@ -118,17 +116,6 @@ int32_t performOperation(
 			errCode = REPOERR_UNKNOWN_ERR;
 		}
 	}
-	else if (command.command == cmdCleanProj)
-	{
-		try{
-			errCode = cleanUpProject(controller, token, command);
-		}
-		catch (const std::exception &e)
-		{
-			repoLogError("Failed to generate optimised stash: " + std::string(e.what()));
-			errCode = REPOERR_UNKNOWN_ERR;
-		}
-	}
 	else if (command.command == cmdGetFile)
 	{
 		try{
@@ -160,30 +147,6 @@ int32_t performOperation(
 /*
 * ======================== Command functions ===================
 */
-
-int32_t cleanUpProject(
-	repo::RepoController       *controller,
-	const repo::RepoController::RepoToken      *token,
-	const repo_op_t            &command
-	)
-{
-	/*
-	* Check the amount of parameters matches
-	*/
-	if (command.nArgcs < 2)
-	{
-		repoLogError("Number of arguments mismatch! " + cmdCleanProj
-			+ " requires 2 arguments:database project");
-		return REPOERR_INVALID_ARG;
-	}
-
-	std::string dbName = command.args[0];
-	std::string project = command.args[1];
-
-	controller->cleanUp(token, dbName, project);
-
-	return REPOERR_OK;
-}
 
 int32_t generateFederation(
 	repo::RepoController       *controller,
@@ -294,6 +257,45 @@ int32_t generateFederation(
 	return success ? REPOERR_OK : REPOERR_FED_GEN_FAIL;
 }
 
+bool _generateStash(
+	repo::RepoController       *controller,
+	const repo::RepoController::RepoToken      *token, 
+	const std::string            &type,
+	const std::string            &dbName,
+	const std::string            &project,
+	const bool                   isBranch,
+	const std::string            &revID) {
+
+
+	repoLog("Generating stash of type " + type + " for " + dbName + "." + project + " rev: " + revID + (isBranch ? " (branch ID)" : ""));
+	auto scene = controller->fetchScene(token, dbName, project, revID, isBranch, false, true, type == "tree");
+	bool  success = false;
+	if (scene) {
+		if (type == "repo")
+		{
+			success = controller->generateAndCommitStashGraph(token, scene);
+		}
+		else if (type == "gltf")
+		{
+			success = controller->generateAndCommitGLTFBuffer(token, scene);
+		}
+		else if (type == "src")
+		{
+			success = controller->generateAndCommitSRCBuffer(token, scene);
+		}
+		else if (type == "tree")
+		{
+			success = controller->generateAndCommitSelectionTree(token, scene);
+		}
+
+		delete scene;
+	}
+
+
+
+	return success;
+}
+
 int32_t generateStash(
 	repo::RepoController       *controller,
 	const repo::RepoController::RepoToken      *token,
@@ -310,9 +312,11 @@ int32_t generateStash(
 		return REPOERR_INVALID_ARG;
 	}
 
+	
 	std::string dbName = command.args[0];
 	std::string project = command.args[1];
 	std::string type = command.args[2];
+
 
 	if (!(type == "repo" || type == "gltf" || type == "src" || type == "tree"))
 	{
@@ -320,29 +324,28 @@ int32_t generateStash(
 		return REPOERR_INVALID_ARG;
 	}
 
-	auto scene = controller->fetchScene(token, dbName, project);
-	if (!scene)
-	{
-		return REPOERR_STASH_GEN_FAIL;
+	bool branch = true;
+	std::string revId = REPO_HISTORY_MASTER_BRANCH;
+	if (command.nArgcs > 3) {
+		revId = command.args[3];
+		branch = false;
 	}
 
-	bool  success = false;
+	bool success = true;
+	std::string revToLower = revId;
+	std::transform(revToLower.begin(), revToLower.end(), revToLower.begin(), ::tolower);
+	if (revToLower == "all")
+	{
+		auto revs = controller->getAllFromCollectionContinuous(token, dbName, project + ".history");
+		for (const auto &rev : revs) {
+			auto revNode = (const repo::core::model::RevisionNode) rev;
+			auto revId = revNode.getUniqueID();
+			success &= _generateStash(controller, token, type, dbName, project, false, revId.toString());		
+		}
+	}
+	else {
+		success = _generateStash(controller, token, type, dbName, project, branch, revId);
 
-	if (type == "repo")
-	{
-		success = controller->generateAndCommitStashGraph(token, scene);
-	}
-	else if (type == "gltf")
-	{
-		success = controller->generateAndCommitGLTFBuffer(token, scene);
-	}
-	else if (type == "src")
-	{
-		success = controller->generateAndCommitSRCBuffer(token, scene);
-	}
-	else if (type == "tree")
-	{
-		success = controller->generateAndCommitSelectionTree(token, scene);
 	}
 
 	return success ? REPOERR_OK : REPOERR_STASH_GEN_FAIL;
@@ -407,10 +410,7 @@ int32_t importFileAndCommit(
 			database = jsonTree.get<std::string>("database", "");
 			project = jsonTree.get<std::string>("project", "");
 
-			if (database.empty() || project.empty())
-			{
-				success = false;
-			}
+			
 
 			owner = jsonTree.get<std::string>("owner", "");
 			configFile = jsonTree.get<std::string>("configfile", "");
@@ -418,11 +418,15 @@ int32_t importFileAndCommit(
 			desc = jsonTree.get<std::string>("desc", "");
 			rotate = jsonTree.get<bool>("dxrotate", rotate);
 			fileLoc = jsonTree.get<std::string>("file", "");
+
+			if (database.empty() || project.empty() || fileLoc.empty())
+			{
+				return REPOERR_LOAD_SCENE_FAIL;
+			}
 		}
 		catch (std::exception &e)
 		{
-			success = false;
-			repoLogError("Failed to import file: " + std::string(e.what()));
+			return REPOERR_LOAD_SCENE_FAIL;
 		}
 	}
 	else
@@ -477,8 +481,8 @@ int32_t importFileAndCommit(
 		+ (rotate ? "true" : "false") + " owner :" + owner + " configFile: " + configFile);
 
 	repo::manipulator::modelconvertor::ModelImportConfig config(configFile);
-
-	repo::core::model::RepoScene *graph = controller->loadSceneFromFile(fileLoc, true, rotate, &config);
+	uint8_t err;
+	repo::core::model::RepoScene *graph = controller->loadSceneFromFile(fileLoc, err, true, rotate, &config);
 	if (graph)
 	{
 		repoLog("Trying to commit this scene to database as " + database + "." + project);
@@ -486,25 +490,19 @@ int32_t importFileAndCommit(
 
 		if (controller->commitScene(token, graph, owner, tag, desc))
 		{
-			if (graph->isMissingTexture())
-			{
-				repoLog("Missing texture detected!");
-				return REPOERR_LOAD_SCENE_MISSING_TEXTURE;
-			}
-			else if (graph->isMissingNodes())
+			if (graph->isMissingNodes())
 			{
 				repoLog("Missing nodes detected!");
 				return REPOERR_LOAD_SCENE_MISSING_NODES;
 			}
-			else if (graph->hasInvalidMeshes())
+			else if (graph->isMissingTexture())
 			{
-				repoLog("Invalid meshes detected!");
-				return REPOERR_LOAD_SCENE_MISSING_NODES;
+				repoLog("Missing texture detected!");
+				return REPOERR_LOAD_SCENE_MISSING_TEXTURE;
 			}
 			else
 				return REPOERR_OK;
 		}
-	}
-
-	return REPOERR_LOAD_SCENE_FAIL;
+	}	
+	return err? err : REPOERR_LOAD_SCENE_FAIL;
 }

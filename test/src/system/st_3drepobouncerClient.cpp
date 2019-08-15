@@ -23,7 +23,7 @@
 #include <cstdlib>
 #include <stdlib.h>
 #include <gtest/gtest.h>
-#include <error_codes.h>
+#include <repo/error_codes.h>
 #include <repo/repo_controller.h>
 #include "../unit/repo_test_database_info.h"
 #include "../unit/repo_test_utils.h"
@@ -42,11 +42,9 @@ static std::string produceCleanArgs(
 	const std::string &password = REPO_GTEST_DBPW
 	)
 {
-	return  getClientExePath() + " " + dbAdd + " "
-		+ std::to_string(port) + " "
-		+ username + " "
-		+ password + " "
-		+ "clean "
+	return  getClientExePath() + " "
+		+ getConnConfig()
+		+ " clean "
 		+ database + " "
 		+ project;
 }
@@ -54,18 +52,12 @@ static std::string produceCleanArgs(
 static std::string produceGenStashArgs(
 	const std::string &database,
 	const std::string &project,
-	const std::string &type,
-	const std::string &dbAdd = REPO_GTEST_DBADDRESS,
-	const int         &port = REPO_GTEST_DBPORT,
-	const std::string &username = REPO_GTEST_DBUSER,
-	const std::string &password = REPO_GTEST_DBPW
+	const std::string &type	
 	)
 {
-	return  getClientExePath() + " " + dbAdd + " "
-		+ std::to_string(port) + " "
-		+ username + " "
-		+ password + " "
-		+ "genStash "
+	return  getClientExePath() + " "
+		+ getConnConfig()
+		+ " genStash "
 		+ database + " "
 		+ project + " "
 		+ type;
@@ -74,18 +66,12 @@ static std::string produceGenStashArgs(
 static std::string produceGetFileArgs(
 	const std::string &file,
 	const std::string &database,
-	const std::string &project,
-	const std::string &dbAdd = REPO_GTEST_DBADDRESS,
-	const int         &port = REPO_GTEST_DBPORT,
-	const std::string &username = REPO_GTEST_DBUSER,
-	const std::string &password = REPO_GTEST_DBPW
+	const std::string &project
 	)
 {
-	return  getClientExePath() + " " + dbAdd + " "
-		+ std::to_string(port) + " "
-		+ username + " "
-		+ password + " "
-		+ "getFile "
+	return  getClientExePath() + " "
+		+ getConnConfig()
+		+ " getFile "
 		+ database + " "
 		+ project + " \""
 		+ file + "\"";
@@ -93,89 +79,36 @@ static std::string produceGetFileArgs(
 
 static std::string produceCreateFedArgs(
 	const std::string &file,
-	const std::string &owner = std::string(),
-	const std::string &dbAdd = REPO_GTEST_DBADDRESS,
-	const int         &port = REPO_GTEST_DBPORT,
-	const std::string &username = REPO_GTEST_DBUSER,
-	const std::string &password = REPO_GTEST_DBPW
+	const std::string &owner = std::string()
 	)
 {
-	return  getClientExePath() + " " + dbAdd + " "
-		+ std::to_string(port) + " "
-		+ username + " "
-		+ password + " "
-		+ "genFed \""
+	return  getClientExePath() + " " 
+		+ getConnConfig()
+		+ " genFed \""
 		+ file + "\" "
 		+ owner;
 }
 
 static std::string produceUploadFileArgs(
-	const std::string &filePath,
-	const std::string &dbAdd = REPO_GTEST_DBADDRESS,
-	const int         &port = REPO_GTEST_DBPORT,
-	const std::string &username = REPO_GTEST_DBUSER,
-	const std::string &password = REPO_GTEST_DBPW)
-{
-	return  getClientExePath() + " " + dbAdd + " "
-		+ std::to_string(port) + " "
-		+ username + " "
-		+ password
+	const std::string &filePath
+){
+	return  getClientExePath() + " " 
+		+ getConnConfig()
 		+ " import -f \""
 		+ filePath + "\"";
 }
 
 static std::string produceUploadArgs(
-	const std::string &dbAdd,
-	const int         &port,
-	const std::string &username,
-	const std::string &password,
 	const std::string &database,
 	const std::string &project,
-	const std::string &filePath)
+	const std::string &filePath,
+	const std::string &configPath = getConnConfig())
 {
-	return  getClientExePath() + " " + dbAdd + " "
-		+ std::to_string(port) + " "
-		+ username + " "
-		+ password
+	return  getClientExePath()
+		+ " " + configPath
 		+ " import \""
 		+ filePath + "\" "
 		+ database + " " + project;
-}
-
-static std::string produceUploadArgs(
-	const std::string &dbAdd,
-	const int         &port,
-	const std::string &database,
-	const std::string &project,
-	const std::string &filePath)
-{
-	return produceUploadArgs(dbAdd, port,
-		REPO_GTEST_DBUSER, REPO_GTEST_DBPW,
-		database, project, filePath);
-}
-
-static std::string produceUploadArgs(
-	const std::string &username,
-	const std::string &password,
-	const std::string &database,
-	const std::string &project,
-	const std::string &filePath)
-{
-	return produceUploadArgs(REPO_GTEST_DBADDRESS,
-		REPO_GTEST_DBPORT,
-		username, password,
-		database, project, filePath);
-}
-
-static std::string produceUploadArgs(
-	const std::string &database,
-	const std::string &project,
-	const std::string &filePath)
-{
-	return produceUploadArgs(REPO_GTEST_DBADDRESS,
-		REPO_GTEST_DBPORT,
-		REPO_GTEST_DBUSER, REPO_GTEST_DBPW,
-		database, project, filePath);
 }
 
 static int runProcess(
@@ -190,76 +123,89 @@ static int runProcess(
 #endif
 }
 
-TEST(RepoClientTest, UploadTest)
+TEST(RepoClientTest, UploadTestInvalidDBConn)
 {
 	//this ensures we can run processes
 	ASSERT_TRUE(system(nullptr));
 
 	//Test failing to connect to database
 	std::string db = "stUpload";
-	std::string failToConnect = produceUploadArgs("invalidAdd", 12345, db, "failConn", getSuccessFilePath());
+	std::string failToConnect = produceUploadArgs(db, "failConn", getSuccessFilePath(), getDataPath("config/invalidAdd.json"));
 	EXPECT_EQ((int)REPOERR_AUTH_FAILED, runProcess(failToConnect));
 	EXPECT_FALSE(projectExists(db, "failConn"));
+}
+TEST(RepoClientTest, UploadTestBadDBAuth)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
 
 	//Test Bad authentication
-	std::string failToAuth = produceUploadArgs("blah", "blah", db, "failAuth", getSuccessFilePath());
+	std::string failToAuth = produceUploadArgs(db, "failAuth", getSuccessFilePath(), getDataPath("config/badAuth.json"));
 	EXPECT_EQ((int)REPOERR_AUTH_FAILED, runProcess(failToAuth));
 	EXPECT_FALSE(projectExists(db, "failAuth"));
 
+}
+
+TEST(RepoClientTest, UploadTestNoFile)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
 	//Test Bad FilePath
 	std::string badFilePath = produceUploadArgs(db, "failPath", "nonExistentFile.obj");
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(badFilePath));
+	fflush(stdout);
+	std::cout << " Executing: " << badFilePath << std::endl;
+	fflush(stdout);
+	EXPECT_EQ((int)REPOERR_MODEL_FILE_READ, runProcess(badFilePath));
 	EXPECT_FALSE(projectExists(db, "failPath"));
+}
+
+TEST(RepoClientTest, UploadTestBadExt)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
 
 	//Test Bad extension
 	std::string badExt = produceUploadArgs(db, "failExt", getDataPath(badExtensionFile));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(badExt));
+	EXPECT_EQ((int)REPOERR_FILE_TYPE_NOT_SUPPORTED, runProcess(badExt));
 	EXPECT_FALSE(projectExists(db, "failExt"));
+}
+
+TEST(RepoClientTest, UploadTestBadFBXVer)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
+
+	//Unsupported FBX version
+	std::string unsupportedVersion = produceUploadArgs(db, "failExt", getDataPath(unsupportedFBXVersion));
+	EXPECT_EQ((int)REPOERR_UNSUPPORTED_FBX_VERSION, runProcess(unsupportedVersion));
+	EXPECT_FALSE(projectExists(db, "failExt"));
+}
+
+TEST(RepoClientTest, UploadTestBadArgs)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
 
 	//Insufficient arguments
-	std::string lackArg = getClientExePath() + " " + REPO_GTEST_DBADDRESS + " " + std::to_string(REPO_GTEST_DBPORT) + " "
-		+ REPO_GTEST_DBUSER + " " + REPO_GTEST_DBPW + " import " + getSuccessFilePath();
+	std::string lackArg = getClientExePath() + " " + getConnConfig() + " import " + getSuccessFilePath();
 	EXPECT_EQ((int)REPOERR_INVALID_ARG, runProcess(lackArg));
+}
+
+TEST(RepoClientTest, UploadTestSuccess)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
 
 	//Test Good Upload
 	std::string goodUpload = produceUploadArgs(db, "cube", getSuccessFilePath());
 	EXPECT_EQ((int)REPOERR_OK, runProcess(goodUpload));
 	EXPECT_TRUE(projectExists(db, "cube"));
 
-	//Test Textured Upload
-	std::string texUpload = produceUploadArgs(db, "textured", getDataPath(texturedModel));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_MISSING_TEXTURE, runProcess(texUpload));
-	EXPECT_TRUE(projectExists(db, "textured"));
-
-	//Test missing nodes Upload
-	std::string misUpload = produceUploadArgs(db, "missing", getDataPath(missingNodesModel));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_MISSING_NODES, runProcess(misUpload));
-	EXPECT_TRUE(projectExists(db, "missing"));
-
-	//Upload IFCFile
-	std::string ifcUpload = produceUploadArgs(db, "ifcTest", getDataPath(ifcModel));
-	EXPECT_EQ((int)REPOERR_OK, runProcess(ifcUpload));
-	EXPECT_TRUE(projectExists(db, "ifcTest"));
-
-	//JSON AS argument
-	//Empty JSON
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(emptyFile))));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importNoFile))));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(emptyJSONFile))));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importbadDir))));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importbadDir2))));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importNoDatabase))));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importNoDatabase2))));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importNoProject))));
-	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(importNoProject2)));
-
-	EXPECT_EQ((int)REPOERR_OK, runProcess(produceUploadFileArgs(getDataPath(importNoOwner))));
-	EXPECT_TRUE(projectExists("testDB", importNoOwnerPro));
-	EXPECT_TRUE(projectSettingsCheck("testDB", importNoOwnerPro, REPO_GTEST_DBUSER, "thisTag", "MyUpload"));
-
-	EXPECT_EQ((int)REPOERR_OK, runProcess(produceUploadFileArgs(getDataPath(importNoOwner2))));
-	EXPECT_TRUE(projectExists("testDB", importNoOwnerPro2));
-	EXPECT_TRUE(projectSettingsCheck("testDB", importNoOwnerPro2, REPO_GTEST_DBUSER, "thisTag", "MyUpload"));
 
 	EXPECT_EQ((int)REPOERR_OK, runProcess(produceUploadFileArgs(getDataPath(importSuccess))));
 	EXPECT_TRUE(projectExists("testDB", importSuccessPro));
@@ -268,21 +214,132 @@ TEST(RepoClientTest, UploadTest)
 	EXPECT_EQ((int)REPOERR_OK, runProcess(produceUploadFileArgs(getDataPath(importSuccess2))));
 	EXPECT_TRUE(projectExists("testDB", importSuccessPro2));
 	EXPECT_TRUE(projectSettingsCheck("testDB", importSuccessPro2, "owner", "taggg", "desccc"));
+
 }
+
+TEST(RepoClientTest, UploadTestTexture)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
+
+
+	//Test Textured Upload
+	std::string texUpload = produceUploadArgs(db, "textured", getDataPath(texturedModel));
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_MISSING_TEXTURE, runProcess(texUpload));
+	EXPECT_TRUE(projectExists(db, "textured"));
+}
+
+TEST(RepoClientTest, UploadTestMissingNodes)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
+
+	//Test missing nodes Upload
+	std::string misUpload = produceUploadArgs(db, "missing", getDataPath(missingNodesModel));
+	std::cout << " Running Missing nodes... " << misUpload << std::endl;
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_MISSING_NODES, runProcess(misUpload));
+	EXPECT_TRUE(projectExists(db, "missing"));
+}
+
+TEST(RepoClientTest, UploadTestIFC)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
+
+
+	//Upload IFCFile
+	std::string ifcUpload = produceUploadArgs(db, "ifcTest", getDataPath(ifcModel));
+	EXPECT_EQ((int)REPOERR_OK, runProcess(ifcUpload));
+	EXPECT_TRUE(projectExists(db, "ifcTest"));
+}
+
+TEST(RepoClientTest, UploadTestDGN)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
+
+
+	//Upload DGN file
+	std::string dgnUpload = produceUploadArgs(db, "dgnTest", getDataPath(dgnModel));
+	EXPECT_EQ((int)REPOERR_OK, runProcess(dgnUpload));
+	EXPECT_TRUE(projectExists(db, "dgnTest"));
+}
+
+TEST(RepoClientTest, UploadTestRVT)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
+
+
+	//Upload RVT file
+	std::string rvtUpload = produceUploadArgs(db, "rvtTest", getDataPath(rvtModel));
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_MISSING_TEXTURE, runProcess(rvtUpload));
+	EXPECT_TRUE(projectExists(db, "rvtTest"));
+
+	//Upload RVT file with texture directory set
+	std::string texturePath = "REPO_RVT_TEXTURES=" + getDataPath("textures");
+	
+	//Linux putenv takes in a char* instead of const char* - need a copy of the const char*
+	char* texturePathEnv = new char[texturePath.size()+1];
+	strncpy(texturePathEnv, texturePath.c_str(), texturePath.size()+1);
+
+	putenv(texturePathEnv);
+	std::string rvtUpload2 = produceUploadArgs(db, "rvtTest2", getDataPath(rvtModel));
+	EXPECT_EQ((int)REPOERR_OK, runProcess(rvtUpload2));
+	EXPECT_TRUE(projectExists(db, "rvtTest2"));
+
+	//Upload RVT file with no valid 3D view
+	std::string rvtUpload3 = produceUploadArgs(db, "rvtTest3", getDataPath(rvtNo3DViewModel));
+	EXPECT_EQ((int)REPOERR_VALID_3D_VIEW_NOT_FOUND, runProcess(rvtUpload3));
+	EXPECT_FALSE(projectExists(db, "rvtTest3"));
+
+}
+
+TEST(RepoClientTest, UploadTestMissingFieldsInJSON)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+	std::string db = "stUpload";
+
+	//JSON AS argument
+	//Empty JSON
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(emptyFile))));
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importNoFile))));
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(emptyJSONFile))));
+	EXPECT_EQ((int)REPOERR_UNKNOWN_ERR, runProcess(produceUploadFileArgs(getDataPath(importbadDir))));
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importbadDir2))));
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importNoDatabase))));
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importNoDatabase2))));
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(getDataPath(importNoProject))));
+	EXPECT_EQ((int)REPOERR_LOAD_SCENE_FAIL, runProcess(produceUploadFileArgs(importNoProject2)));
+
+}
+
+TEST(RepoClientTest, UploadTestOwner)
+{
+	//this ensures we can run processes
+	ASSERT_TRUE(system(nullptr));
+
+	EXPECT_EQ((int)REPOERR_OK, runProcess(produceUploadFileArgs(getDataPath(importNoOwner))));
+	EXPECT_TRUE(projectExists("testDB", importNoOwnerPro));
+	EXPECT_TRUE(projectSettingsCheck("testDB", importNoOwnerPro, REPO_GTEST_DBUSER, "thisTag", "MyUpload"));
+	EXPECT_EQ((int)REPOERR_OK, runProcess(produceUploadFileArgs(getDataPath(importNoOwner2))));
+	EXPECT_TRUE(projectExists("testDB", importNoOwnerPro2));
+	EXPECT_TRUE(projectSettingsCheck("testDB", importNoOwnerPro2, REPO_GTEST_DBUSER, "thisTag", "MyUpload"));
+}
+
+	
+
 
 TEST(RepoClientTest, CreateFedTest)
 {
 	//this ensures we can run processes
 	ASSERT_TRUE(system(nullptr));
-
-	//Test failing to connect to database
-	std::string db = "stFed";
-	std::string failToConnect = produceCreateFedArgs("whatever", "", "invalidAdd", 12345);
-	EXPECT_EQ((int)REPOERR_AUTH_FAILED, runProcess(failToConnect));
-
-	//Test Bad authentication
-	std::string failToAuth = produceCreateFedArgs("whatever", "", REPO_GTEST_DBADDRESS, REPO_GTEST_DBPORT, "badUser", "invalidPasswrd2");
-	EXPECT_EQ((int)REPOERR_AUTH_FAILED, runProcess(failToAuth));
 
 	//Test Bad FilePath
 	std::string badFilePath = produceCreateFedArgs("nonExistentFile.json");
@@ -333,9 +390,7 @@ TEST(RepoClientTest, GenStashTest)
 {
 	repo::RepoController *controller = new repo::RepoController();
 	std::string errMsg;
-	repo::RepoController::RepoToken *token =
-		controller->authenticateToAdminDatabaseMongo(errMsg, REPO_GTEST_DBADDRESS, REPO_GTEST_DBPORT,
-		REPO_GTEST_DBUSER, REPO_GTEST_DBPW);
+	repo::RepoController::RepoToken *token = initController(controller);
 	repo::lib::RepoUUID stashRoot;
 	if (token)
 	{
@@ -369,20 +424,4 @@ TEST(RepoClientTest, GenStashTest)
 	EXPECT_EQ((int)REPOERR_STASH_GEN_FAIL, runProcess(produceGenStashArgs("blash", "blah", "gltf")));
 
 	delete controller;
-}
-
-TEST(RepoClientTest, CleanTest)
-{
-	EXPECT_EQ((int)REPOERR_OK, runProcess(produceCleanArgs("sampleDataRW", "cleanTest1")));
-	EXPECT_EQ((int)REPOERR_OK, runProcess(produceCleanArgs("sampleDataRW", "cleanTest2")));
-	EXPECT_EQ((int)REPOERR_OK, runProcess(produceCleanArgs("sampleDataRW", "cleanTest3")));
-	EXPECT_EQ((int)REPOERR_OK, runProcess(produceCleanArgs("sampleDataRW", "cleanTest4")));
-	EXPECT_EQ((int)REPOERR_OK, runProcess(produceCleanArgs("sampleDataRW", "cleanTest5")));
-	EXPECT_EQ((int)REPOERR_OK, runProcess(produceCleanArgs("sampleDataRW", "nonExistentbadfsd")));
-
-	EXPECT_FALSE(projectHasValidRevision("sampleDataRW", "cleanTest1"));
-	EXPECT_TRUE(projectHasValidRevision("sampleDataRW", "cleanTest2"));
-	EXPECT_TRUE(projectHasValidRevision("sampleDataRW", "cleanTest3"));
-	EXPECT_TRUE(projectHasValidRevision("sampleDataRW", "cleanTest4"));
-	EXPECT_TRUE(projectHasValidRevision("sampleDataRW", "cleanTest5"));
 }

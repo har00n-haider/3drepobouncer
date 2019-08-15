@@ -43,51 +43,12 @@ void RepoController::addAlias(
 		token->alias = alias;
 }
 
-RepoController::RepoToken* RepoController::authenticateToAdminDatabaseMongo(
-	std::string       &errMsg,
-	const std::string &address,
-	const int         &port,
-	const std::string &username,
-	const std::string &password,
-	const bool        &pwDigested
+RepoController::RepoToken* RepoController::init(
+	std::string            &errMsg,
+	const lib::RepoConfig  &config
 	)
 {
-	return impl->authenticateToAdminDatabaseMongo(errMsg, address, port, username, password, pwDigested);
-}
-
-RepoController::RepoToken* RepoController::authenticateMongo(
-	std::string       &errMsg,
-	const std::string &address,
-	const uint32_t    &port,
-	const std::string &dbName,
-	const std::string &username,
-	const std::string &password,
-	const bool        &pwDigested
-	)
-{
-	return impl->authenticateMongo(errMsg, address, port, dbName, username, password, pwDigested);
-}
-
-bool RepoController::authenticateMongo(
-	std::string                       &errMsg,
-	const RepoController::RepoToken   *token
-	)
-{
-	return impl->authenticateMongo(errMsg, token);
-}
-
-bool RepoController::cleanUp(
-	const RepoToken      *token,
-	const std::string                      &dbName,
-	const std::string                      &projectName
-	)
-{
-	return impl->cleanUp(token, dbName, projectName);
-}
-
-bool RepoController::testConnection(const RepoController::RepoToken *token)
-{
-	return impl->testConnection(token);
+	return impl->init(errMsg, config);
 }
 
 bool RepoController::commitAssetBundleBuffers(
@@ -116,47 +77,6 @@ uint64_t RepoController::countItemsInCollection(
 	return impl->countItemsInCollection(token, database, collection);
 }
 
-RepoController::RepoToken* RepoController::createToken(
-	const std::string &alias,
-	const std::string &address,
-	const int         &port,
-	const std::string &dbName,
-	const std::string &username,
-	const std::string &password
-	)
-{
-	return impl->createToken(alias, address, port, dbName, username, password);
-}
-
-RepoController::RepoToken* RepoController::createToken(
-	const std::string &alias,
-	const std::string &address,
-	const int         &port,
-	const std::string &dbName,
-	const RepoController::RepoToken *token
-	)
-{
-	return impl->createToken(alias, address, port, dbName, token);
-}
-
-RepoController::RepoToken* RepoController::createTokenFromSerialised(
-	const std::string &data) const
-{
-	RepoController::RepoToken* token = nullptr;
-	if (data.size())
-	{
-		token = RepoController::RepoToken::createTokenFromRawData(data);
-
-		if (token && !token->valid())
-		{
-			delete token;
-			token = nullptr;
-		}
-	}
-
-	return token;
-}
-
 void RepoController::destroyToken(RepoController::RepoToken* token)
 {
 	if (token) delete token;
@@ -173,9 +93,11 @@ repo::core::model::RepoScene* RepoController::fetchScene(
 	const std::string    &collection,
 	const std::string    &uuid,
 	const bool           &headRevision,
-	const bool           &lightFetch)
+	const bool           &lightFetch,
+	const bool           &ignoreRefScene,
+	const bool           &skeletonFetch)
 {
-	return impl->fetchScene(token, database, collection, uuid, headRevision, lightFetch);
+	return impl->fetchScene(token, database, collection, uuid, headRevision, lightFetch, ignoreRefScene, skeletonFetch);
 }
 
 bool RepoController::generateAndCommitSelectionTree(
@@ -216,31 +138,6 @@ const uint64_t               &skip,
 const uint32_t               &limit)
 {
 	return impl->getAllFromCollectionContinuous(token, database, collection, fields, sortField, sortOrder, skip, limit);
-}
-
-void RepoController::getInfoFromToken(
-	const RepoController::RepoToken *token,
-	std::string                     &alias,
-	std::string                     &host,
-	uint32_t                        &port,
-	std::string                     &username,
-	std::string                     &authDB
-	) const
-{
-	if (token)
-	{
-		alias = token->alias;
-		host = token->databaseHost;
-		port = token->databasePort;
-		if (token->getCredentials())
-			username = token->credentials.getStringField("user");
-
-		authDB = token->databaseName;
-	}
-	else
-	{
-		repoError << "Failed to obtain information from token: token is invalid!";
-	}
 }
 
 std::vector < repo::core::model::RepoRole > RepoController::getRolesFromDatabase(
@@ -303,11 +200,6 @@ repo::core::model::CollectionStats RepoController::getCollectionStats(
 	return impl->getCollectionStats(token, database, collection);
 }
 
-std::string RepoController::getHostAndPort(const RepoController::RepoToken *token)
-{
-	return token->databaseAd;
-}
-
 std::map<std::string, std::list<std::string>>
 RepoController::getDatabasesWithProjects(
 const RepoController::RepoToken  *token,
@@ -316,7 +208,7 @@ const std::list<std::string>     &databases)
 	return impl->getDatabasesWithProjects(token, databases);
 }
 
-void RepoController::insertBinaryFileToDatabase(
+bool RepoController::insertBinaryFileToDatabase(
 	const RepoController::RepoToken            *token,
 	const std::string          &database,
 	const std::string          &collection,
@@ -324,7 +216,7 @@ void RepoController::insertBinaryFileToDatabase(
 	const std::vector<uint8_t> &rawData,
 	const std::string          &mimeType)
 {
-	impl->insertBinaryFileToDatabase(token, database, collection, name, rawData, mimeType);
+	return impl->insertBinaryFileToDatabase(token, database, collection, name, rawData, mimeType);
 }
 
 void RepoController::insertRole(
@@ -496,11 +388,12 @@ std::vector<std::shared_ptr<repo::core::model::MeshNode>> RepoController::initia
 	const RepoController::RepoToken                    *token,
 	repo::core::model::RepoScene *scene,
 	std::unordered_map<std::string, std::vector<uint8_t>> &jsonFiles,
+	repo::core::model::RepoUnityAssets &unityAssets,
 	std::vector<std::vector<uint16_t>> &serialisedFaceBuf,
 	std::vector<std::vector<std::vector<float>>> &idMapBuf,
 	std::vector<std::vector<std::vector<repo_mesh_mapping_t>>> &meshMappings)
 {
-	return impl->initialiseAssetBuffer(token, scene, jsonFiles, serialisedFaceBuf, idMapBuf, meshMappings);
+	return impl->initialiseAssetBuffer(token, scene, jsonFiles, unityAssets, serialisedFaceBuf, idMapBuf, meshMappings);
 }
 
 repo::core::model::RepoNodeSet RepoController::loadMetadataFromFile(
@@ -513,11 +406,12 @@ repo::core::model::RepoNodeSet RepoController::loadMetadataFromFile(
 repo::core::model::RepoScene*
 RepoController::loadSceneFromFile(
 const std::string                                          &filePath,
+uint8_t                                                    &err,
 const bool                                                 &applyReduction,
 const bool                                                 &rotateModel,
 const repo::manipulator::modelconvertor::ModelImportConfig *config)
 {
-	return impl->loadSceneFromFile(filePath, applyReduction, rotateModel, config);
+	return impl->loadSceneFromFile(filePath, err, applyReduction, rotateModel, config);
 }
 
 bool RepoController::saveOriginalFiles(
@@ -542,18 +436,6 @@ bool RepoController::saveSceneToFile(
 	const repo::core::model::RepoScene* scene)
 {
 	return impl->saveSceneToFile(filePath, scene);
-}
-
-std::string RepoController::serialiseToken(
-	const RepoController::RepoToken* token) const
-{
-	if (token)
-		return token->serialiseToken();
-	else
-	{
-		repoError << "Cannot serialise token : token is empty!";
-		return std::string();
-	}
 }
 
 void RepoController::reduceTransformations(

@@ -17,6 +17,7 @@
 #pragma once
 #include "../../core/model/collection/repo_scene.h"
 #include "../../core/handler/repo_database_handler_abstract.h"
+#include "../../core/handler/fileservice/repo_file_manager.h"
 #include "../modelconvertor/export/repo_model_export_web.h"
 
 namespace repo{
@@ -37,11 +38,12 @@ namespace repo{
 				* @param addTimestampToSettings whether we should be adding timestamp to settings upon success
 				*/
 				bool commitWebBuffers(
-					repo::core::model::RepoScene                 *scene,
-					const std::string                            &geoStashExt,
-					const repo_web_buffers_t &resultBuffers,
-					repo::core::handler::AbstractDatabaseHandler *handler,
-					const bool                                    addTimestampToSettings = false);
+					repo::core::model::RepoScene                          *scene,
+					const std::string                                     &geoStashExt,
+					const repo_web_buffers_t                              &resultBuffers,
+					repo::core::handler::AbstractDatabaseHandler          *handler,
+					repo::core::handler::fileservice::FileManager         *fileManager,
+					const bool                                            addTimestampToSettings = false);
 
 				/**
 				* Retrieve a RepoScene with a specific revision loaded.
@@ -61,15 +63,19 @@ namespace repo{
 					const std::string                             &project,
 					const repo::lib::RepoUUID                                &uuid,
 					const bool                                    &headRevision = true,
-					const bool                                    &lightFetch = false);
+					const bool                                    &lightFetch = false,
+					const bool                                    &ignoreRefScenes = false,
+					const bool                                    &skeletonFetch = false);
 
 				repo::core::model::RepoScene* fetchScene(
 					repo::core::handler::AbstractDatabaseHandler *handler,
 					const std::string                             &database,
-					const std::string                             &project)
+					const std::string                             &project,
+					const bool                             &ignoreRefScene = false,
+					const bool                                    &skeletonFetch = false)
 				{
 					repo::lib::RepoUUID master = repo::lib::RepoUUID(REPO_HISTORY_MASTER_BRANCH);
-					return fetchScene(handler, database, project, master);
+					return fetchScene(handler, database, project, master, true, false, ignoreRefScene);
 				}
 
 				/**
@@ -90,8 +96,9 @@ namespace repo{
 				* @return return true upon success
 				*/
 				bool generateAndCommitSelectionTree(
-					repo::core::model::RepoScene                 *scene,
-					repo::core::handler::AbstractDatabaseHandler *handler
+					repo::core::model::RepoScene                          *scene,
+					repo::core::handler::AbstractDatabaseHandler          *handler,
+					repo::core::handler::fileservice::FileManager         *fileManager
 					);
 
 				/**
@@ -130,10 +137,11 @@ namespace repo{
 				* @return returns repo_web_buffers upon success
 				*/
 				bool generateWebViewBuffers(
-					repo::core::model::RepoScene                 *scene,
-					const repo::manipulator::modelconvertor::WebExportType          &exType,
-					repo_web_buffers_t                           &resultBuffers,
-					repo::core::handler::AbstractDatabaseHandler *handler = nullptr);
+					repo::core::model::RepoScene                           *scene,
+					const repo::manipulator::modelconvertor::WebExportType &exType,
+					repo_web_buffers_t                                     &resultBuffers,
+					repo::core::handler::AbstractDatabaseHandler           *handler = nullptr,
+					repo::core::handler::fileservice::FileManager         *fileManager = nullptr);
 
 				/**
 				* Remove stash graph entry for the given scene

@@ -55,13 +55,18 @@ namespace repo{
 
 			const std::string REPO_IMPORT_BBOX = "bbox";
 
-			const char supportedFileVersion[7] = "BIM001";
+			const std::string REPO_V1 = "BIM001";
+			const std::string REPO_V2 = "BIM002";
+
+			const std::set<std::string> supportedFileVersions = { REPO_V1, REPO_V2 };
+			const static int REPO_VERSION_LENGTH = 6;
 
 			class RepoModelImport : public AbstractModelImport
 			{
 				private:
 					std::vector<repo::core::model::RepoNode *> node_map;
 					std::vector<repo::lib::RepoMatrix> trans_map;
+					bool is32Bit = false;
 
 					void createObject(const boost::property_tree::ptree& tree);
 
@@ -81,23 +86,31 @@ namespace repo{
 						int64_t numChildren;
 					} fileMeta; 
 
+					struct mesh_data_t {
+						std::vector<repo::lib::RepoVector3D64> rawVertices;
+						std::vector<repo::lib::RepoVector3D> normals;
+						std::vector<repo_face_t> faces;
+						std::vector<std::vector<double>> boundingBox;
+						repo::lib::RepoUUID parent;
+						repo::lib::RepoUUID sharedID;
+					};
+
 					fileMeta file_meta;
 
 					std::vector<long> sizes;
 
 					repo::core::model::MaterialNode* parseMaterial(const boost::property_tree::ptree &pt);
 
-					repo::core::model::MetadataNode* createMetadataNode(const boost::property_tree::ptree &metadata, const std::string &parentName, const repo::lib::RepoUUID &parentID);
-					repo::core::model::MeshNode* createMeshNode(const boost::property_tree::ptree &geometry, const std::string &parentName, const repo::lib::RepoUUID &parentID, const repo::lib::RepoMatrix &trans);
-					void createMaterialNode(const boost::property_tree::ptree& material, const std::string &parentName, const repo::lib::RepoUUID &parentID);
+					repo::core::model::MetadataNode*  createMetadataNode(const boost::property_tree::ptree &metadata, const std::string &parentName, const repo::lib::RepoUUID &parentID);
+					mesh_data_t createMeshRecord(const boost::property_tree::ptree &geometry, const std::string &parentName, const repo::lib::RepoUUID &parentID, const repo::lib::RepoMatrix &trans);
 					boost::property_tree::ptree getNextJSON(long jsonSize);
 					void skipAheadInFile(long amount);
 
 					std::vector<repo::core::model::MaterialNode *> matNodeList;
 					std::vector<std::vector<repo::lib::RepoUUID>> matParents;
 
+					std::vector<mesh_data_t> meshEntries;
 					repo::core::model::RepoNodeSet cameras; //!< Cameras
-					repo::core::model::RepoNodeSet meshes; //!< Meshes
 					repo::core::model::RepoNodeSet materials; //!< Materials
 					repo::core::model::RepoNodeSet metadata; //!< Metadata
 					repo::core::model::RepoNodeSet transformations; //!< Transformations
@@ -140,7 +153,7 @@ namespace repo{
 					* @param error message if failed
 					* @return returns true upon success
 					*/
-					virtual bool importModel(std::string filePath, std::string &errMsg);
+					virtual bool importModel(std::string filePath, uint8_t &errMsg);
 			};
 
 			//http://stackoverflow.com/questions/23481262/using-boost-property-tree-to-read-int-array
