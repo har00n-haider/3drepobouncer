@@ -50,6 +50,7 @@ namespace repo {
 				~SynchroModelImport() {}
 
 				virtual bool requireReorientation() const { return true; }
+				virtual bool applyReduction() const { return false; }
 
 #ifdef SYNCHRO_SUPPORT
 				/**
@@ -199,9 +200,9 @@ namespace repo {
 				bool importModel(std::string filePath, uint8_t &errMsg) {
 					errMsg = REPOERR_SYNCHRO_UNAVAILABLE;
 					return false;
-				}
+			}
 #endif
-			};
-		} //namespace SynchroModelImport
-	} //namespace manipulator
+		};
+	} //namespace SynchroModelImport
+} //namespace manipulator
 } //namespace repo
