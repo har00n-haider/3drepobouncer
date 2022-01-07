@@ -22,7 +22,9 @@ using namespace repo::lib;
 
 TEST(RepoUtils, timeZoneTest)
 {
-	time_t utcEpoch = timeZoneEpochToUtcEpoch("Asia/Tokyo", 1641555767);
-	EXPECT_EQ(1641523367 , utcEpoch);
+	EXPECT_EQ(1641523367, 
+		timeZoneEpochToUtcEpoch("Asia/Tokyo", 1641555767));
+	EXPECT_THROW(timeZoneEpochToUtcEpoch("Totally non existent timezone", 0), 
+		repo::lib::RepoException);
 }
 
