@@ -18,6 +18,9 @@
 
 #include <boost/filesystem.hpp>
 #include <string>
+#include <boost/date_time/local_time/local_time.hpp>
+#include <repo/lib/repo_utils.h>
+
 namespace repo {
 	namespace lib {
 		static bool doesFileExist(const boost::filesystem::path& inputPath)
@@ -40,6 +43,42 @@ namespace repo {
 
 		static void toUpper(std::string &str) {
 			std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::toupper(c); });
+		}
+
+		static std::string getEnvString(std::string const& envVarName)
+		{
+			char* value = getenv(envVarName.c_str());
+			return (value && strlen(value) > 0) ? value : "";
+		}
+
+		static time_t timeZoneEpochToUtcEpoch(std::string const & timeZoneName, time_t timeZoneEpochSeconds)
+		{
+			// load database
+			static boost::local_time::tz_database timeZoneDatabase;
+			if(timeZoneDatabase.region_list().size() == 0)
+			{
+				const std::string timeZoneDatabasePath = getEnvString("BOOST_TIMEZONE_CSV");
+				if(timeZoneDatabasePath.length() == 0)
+				{
+					throw repo::lib::RepoException("Cannot find boost time zone database csv path");
+				}
+				timeZoneDatabase.load_from_file(timeZoneDatabasePath);
+			}
+			auto list = timeZoneDatabase.region_list();
+			// create a boost time zone
+			boost::local_time::time_zone_ptr localTimeZone = timeZoneDatabase.time_zone_from_region(timeZoneName);
+			// create a boost ptime to represent the input time as unix epoch 
+			boost::posix_time::ptime localEpoch = boost::posix_time::from_time_t(timeZoneEpochSeconds);
+			// create the local date time object to corrected utc time 
+			boost::local_time::local_date_time localDateTime{ localEpoch, localTimeZone };
+			//TODO: remove this debug log
+			std::cout << "UTC   time: "<< localDateTime.utc_time() << '\n';
+			std::cout << "local time: "<< localDateTime.local_time() << '\n';
+			std::cout << "local time zone name: " << localDateTime.zone_name() << '\n';
+			std::cout << "UTC offset in time zone: " << localTimeZone->base_utc_offset() << std::endl;
+			std::cout << "orig epoch: " << static_cast<time_t>(timeZoneEpochSeconds) << "\n";
+			std::cout << "conv epoch: " << boost::posix_time::to_time_t(localDateTime.local_time()) << "\n";
+			return boost::posix_time::to_time_t(localDateTime.local_time());
 		}
 	}
 }
