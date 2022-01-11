@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31105.61
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "csharp_example", "csharp_example\csharp_example.csproj", "{FD50F591-66DF-485F-AF58-B5716A369B85}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FD50F591-66DF-485F-AF58-B5716A369B85}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD50F591-66DF-485F-AF58-B5716A369B85}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD50F591-66DF-485F-AF58-B5716A369B85}.Debug|x64.ActiveCfg = Debug|x64
+		{FD50F591-66DF-485F-AF58-B5716A369B85}.Debug|x64.Build.0 = Debug|x64
+		{FD50F591-66DF-485F-AF58-B5716A369B85}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD50F591-66DF-485F-AF58-B5716A369B85}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD50F591-66DF-485F-AF58-B5716A369B85}.Release|x64.ActiveCfg = Release|x64
+		{FD50F591-66DF-485F-AF58-B5716A369B85}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {000D4186-1B64-4256-A4A3-7AE04B756298}
+	EndGlobalSection
+EndGlobal
