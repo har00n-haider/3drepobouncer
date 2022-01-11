@@ -15,12 +15,11 @@
 *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <repo/lib/repo_license.h>
+#include <repo/repo_controller.h>
 
 int main(int argc, char* argv[]) {
-
-	repo::lib::LicenseValidator::RunActivation();
-	repo::lib::LicenseValidator::RunActivation();
+	
+	repo::RepoController r();
 
 	return 0;
 }
