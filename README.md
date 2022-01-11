@@ -7,12 +7,14 @@ We have a core C++ dll (3drepobouncer) that we call from two locations:
 - An native C++ program (3drepobouncerClient.exe)
 - A managed C# program (csharp_example.exe)
 
-The licensing is implementd in the core C++ dll
+The licensing is implementd in the core C++ dll, in the following source files:
+
+.\bouncer\src\repo\lib\repo_license.cpp
+.\bouncer\src\repo\lib\repo_license.h
 
 ## Issue
 
 The problem is that the first scenario activates and deactivates fine, but the second scenario only activates, but does not seem to deactivate properly. I cannot tell why there is such a difference, seeing as they are both calling the same dll, with the same configuration.
-
 
 ## Replicating the scenario
 
