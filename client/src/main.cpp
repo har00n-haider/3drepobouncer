@@ -19,7 +19,7 @@
 
 int main(int argc, char* argv[]) {
 	
-	repo::RepoController r();
-
+	repo::RepoController r;
+	r.init();
 	return 0;
 }
