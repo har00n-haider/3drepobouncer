@@ -17,6 +17,7 @@
 
 #include "repo_license.h"
 
+
 namespace Licensing
 {
 
@@ -74,7 +75,7 @@ namespace Licensing
 		// only run once 
 		if (!instanceUuid.empty() || cryptolensHandle)
 		{
-			repoError << " Attempting to activate more than once, aborting activation";
+			repoError << " Attempting to activate more than once, aborting activation" << "\n";
 			return;
 		}
 
@@ -102,24 +103,24 @@ namespace Licensing
 			);
 
 		// dealing with early bail out scenarios
-		repoTrace << activationSummaryBlock;
+		repoTrace << activationSummaryBlock << "\n";
 		if (e)
 		{
 			cryptolens::ActivateError error = cryptolens::ActivateError::from_reason(e.get_reason());
-			repoTrace << "- server message: " << error.what();
-			repoTrace << "- server respose ok: false";
-			repoTrace << "- session not added to license";
-			repoInfo  << "License activation failed: " << error.what();
-			repoTrace << activationSummaryBlock;
+			repoTrace << "- server message: " << error.what() << "\n";
+			repoTrace << "- server respose ok: false" << "\n";
+			repoTrace << "- session not added to license" << "\n";
+			repoInfo  << "License activation failed: " << error.what() << "\n";
+			repoTrace << activationSummaryBlock << "\n";
 			Reset();
 			throw repo::lib::RepoInvalidLicenseException();
 		}
 		else if (!licenseKey)
 		{
-			repoTrace << "- server respose ok: false";
-			repoTrace << "- session not added to license. Error license LicenseKey is null";
-			repoInfo << "License activation failed: license LicenseKey is null";
-			repoTrace << activationSummaryBlock;
+			repoTrace << "- server respose ok: false" << "\n";
+			repoTrace << "- session not added to license. Error license LicenseKey is null" << "\n";
+			repoInfo << "License activation failed: license LicenseKey is null" << "\n";
+			repoTrace << activationSummaryBlock << "\n";
 			Reset();
 			throw repo::lib::RepoInvalidLicenseException();
 		}
@@ -135,29 +136,29 @@ namespace Licensing
 				licenseKey->get_maxnoofmachines().value() : -1;
 			bool licenseBlocked = licenseKey->get_block();
 			bool licenseExpired = static_cast<bool>(licenseKey->check().has_expired(time(0)));
-			repoTrace << "- session license ID: " << instanceUuid;
-			repoTrace << "- server message: " << notes;
-			repoTrace << "- server respose ok: true";
-			repoTrace << "- license blocked: " << licenseBlocked;
-			repoTrace << "- license expired: " << licenseExpired;
+			repoTrace << "- session license ID: " << instanceUuid << "\n";
+			repoTrace << "- server message: " << notes << "\n";
+			repoTrace << "- server respose ok: true" << "\n";
+			repoTrace << "- license blocked: " << licenseBlocked << "\n";
+			repoTrace << "- license expired: " << licenseExpired << "\n";
 			repoTrace << "- license expiry on: " <<
-				GetFormattedUtcTime(licenseKey->get_expires()) << " (UTC)";
-			if (noUsedInsances >= 0) repoTrace << "- activated instances: " << noUsedInsances;
-			if (maxInstances > 0) repoTrace << "- allowed instances: " << maxInstances;
+				GetFormattedUtcTime(licenseKey->get_expires()) << " (UTC)" << "\n";
+			if (noUsedInsances >= 0) repoTrace << "- activated instances: " << noUsedInsances << "\n";
+			if (maxInstances > 0) repoTrace << "- allowed instances: " << maxInstances << "\n";
 
 			// handle result
 			bool allCheck = !licenseExpired && !licenseBlocked;
 			if (allCheck)
 			{
-				repoTrace << "- activation result: session succesfully added to license";
-				repoInfo << "License activation passed";
-				repoTrace << activationSummaryBlock;
+				repoTrace << "- activation result: session succesfully added to license" << "\n";
+				repoInfo << "License activation passed" << "\n";
+				repoTrace << activationSummaryBlock << "\n";
 			}
 			else
 			{
-				repoTrace << "- activation result: session activation failed";
-				repoInfo << "License activation failed: some checks failed";
-				repoTrace << activationSummaryBlock;
+				repoTrace << "- activation result: session activation failed" << "\n";
+				repoInfo << "License activation failed: some checks failed" << "\n";
+				repoTrace << activationSummaryBlock << "\n";
 				Reset();
 				throw repo::lib::RepoInvalidLicenseException();
 			}
@@ -171,7 +172,7 @@ namespace Licensing
 		// only deactivate if we have succesfully activated
 		if (instanceUuid.empty() || !cryptolensHandle)
 		{
-			repoError << " Attempting to deactivate without activation, aborting deactivation";
+			repoError << " Attempting to deactivate without activation, aborting deactivation" << "\n";
 			return;
 		}
 
@@ -185,24 +186,24 @@ namespace Licensing
 			true);
 
 		// dealing with the error in deactivation
-		repoTrace << deactivationSummaryBlock;
+		repoTrace << deactivationSummaryBlock << "\n";
 		if (e)
 		{
 			cryptolens::ActivateError error = cryptolens::ActivateError::from_reason(e.get_reason());
-			repoTrace << "- server message: " << error.what();
-			repoTrace << "- session license ID: " << instanceUuid;
+			repoTrace << "- server message: " << error.what() << "\n";
+			repoTrace << "- session license ID: " << instanceUuid << "\n";
 			repoTrace << "- deactivation result: session not removed from license. " <<
 				"Error trying to deactivate license, " <<
 				"this instance will be taken off the license in less than " <<
-				floatingTimeIntervalSec << " seconds";
-			repoInfo << "License deactivation failed: " << error.what();
-			repoTrace << deactivationSummaryBlock;
+				floatingTimeIntervalSec << " seconds" << "\n";
+			repoInfo << "License deactivation failed: " << error.what() << "\n";
+			repoTrace << deactivationSummaryBlock << "\n";
 		}
 		else
 		{
-			repoTrace << "- deactivation result: session succesfully removed from license";
-			repoInfo << "License deactivation passed";
-			repoTrace << deactivationSummaryBlock;
+			repoTrace << "- deactivation result: session succesfully removed from license" << "\n";
+			repoInfo << "License deactivation passed" << "\n";
+			repoTrace << deactivationSummaryBlock << "\n";
 		}
 
 		Reset();
