@@ -5,3 +5,13 @@
 
 
 add_subdirectory(lib)
+set(SOURCES
+	${SOURCES}
+	${CMAKE_CURRENT_SOURCE_DIR}/repo_controller.cpp
+	CACHE STRING "SOURCES" FORCE)
+
+set(HEADERS
+	${HEADERS}
+	${CMAKE_CURRENT_SOURCE_DIR}/repo_controller.h
+	CACHE STRING "HEADERS" FORCE)
+
