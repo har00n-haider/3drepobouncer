@@ -24,8 +24,7 @@
 #include <string>
 #include <iostream>
 
-#define BOOST_LOG_TRIVIAL(x) (std::cout << x << "\n")
-
 //internal classes should all be using this.
-#define repoTrace BOOST_LOG_TRIVIAL(trace)
-#define repoInfo BOOST_LOG_TRIVIAL(info)
+#define repoTrace std::cout
+#define repoInfo std::cout
+#define repoError std::cout

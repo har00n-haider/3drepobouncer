@@ -16,35 +16,12 @@
 */
 #pragma once
 
-#include <boost/filesystem.hpp>
 #include <string>
+#include <memory>
+#include <time.h>
+
 namespace repo {
 	namespace lib {
-		static bool doesFileExist(const boost::filesystem::path& inputPath)
-		{
-			return boost::filesystem::exists(inputPath) && boost::filesystem::is_regular_file(inputPath);
-		}
-
-		static bool doesDirExist(const boost::filesystem::path& inputPath)
-		{
-			return boost::filesystem::exists(inputPath) && boost::filesystem::is_directory(inputPath);
-		}
-
-		static std::string getExtension(const boost::filesystem::path &inputPath) 
-		{
-			return inputPath.extension().string();
-		}
-
-		static void toLower(std::string &str) 
-		{
-			std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
-		}
-
-		static void toUpper(std::string &str) 
-		{
-			std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::toupper(c); });
-		}
-
 		static std::string getEnvString(std::string const & envVarName)
 		{
 			char* value = getenv(envVarName.c_str());
