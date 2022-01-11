@@ -22,6 +22,8 @@
 * State information is stored in a singleton object CSharpWrapper
 */
 
+#include <repo/repo_bouncer_global.h>
+
 #if defined(_WIN32) || defined(_WIN64)
 #   define REPO_WRAPPER_DECL_EXPORT __declspec(dllexport)
 #   define REPO_WRAPPER_DECL_IMPORT __declspec(dllimport)

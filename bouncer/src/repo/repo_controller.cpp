@@ -30,3 +30,8 @@ RepoController::~RepoController()
 {
 	Licensing::LicenseValidator::RunDeactivation();
 }
+
+void RepoController::init()
+{
+	std::cout << "running init" << "\n";
+}

@@ -26,10 +26,11 @@
 #include <map>
 #include <memory>
 #include <string>
+#include "repo_bouncer_global.h"
 
 
 namespace repo {
-	class RepoController
+	class REPO_API_EXPORT RepoController
 	{
 	public:
 
@@ -47,5 +48,7 @@ namespace repo {
 			* Destructor
 			*/
 		~RepoController();
+
+		void init();
 	};
 }
