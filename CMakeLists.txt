@@ -30,90 +30,8 @@ if(${APPLE})
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework Foundation")
 endif()
 
-option (REPO_BUILD_COVERAGE "Building with coverage report" OFF)
-option (ODA_SUPPORT "If ODA library is present" OFF)
-option (SYNCHRO_SUPPORT "If Synchro library is present" OFF)
-
 option (LICENSE_CHECK  "Build with a license check, see for details: https://github.com/3drepo/wiki/wiki/Licensing-components-of-3drepo.io " OFF)
 
-if(REPO_BUILD_COVERAGE)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 --coverage")
-endif()
-
-#================BOOST SETTINGS=======================
-#add_definitions(-DBOOST_ALL_NO_LIB)
-add_definitions(-DBOOST_ALL_DYN_LINK)
-add_definitions(-DBOOST_LOG_DYN_LINK)
-add_definitions(-DBOOST_PROGRAM_OPTIONS_DYN_LINK)
-add_definitions(-DBOOST_UUID_NO_SIMD)
-set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
-
-unset(Boost_INCLUDE_DIR CACHE)
-unset(Boost_LIBRARY_DIRS CACHE)
-if(WIN32)
-	find_package(Boost REQUIRED COMPONENTS system thread chrono log log_setup filesystem program_options regex zlib bzip2 iostreams date_time)
-else()
-	find_package(Boost REQUIRED COMPONENTS system thread chrono log log_setup filesystem program_options regex iostreams date_time)
-endif()
-add_definitions(${Boost_LIB_DIAGNOSTIC_DEFINITIONS})
-add_definitions(-DBOOST_OPTIONAL_USE_OLD_DEFINITION_OF_NONE)
-
-if(NOT ${Boost_FOUND})
-	message(FATAL_ERROR "Cannot find boost")
-endif()
-
-
-#================MONGO SETTINGS=======================
-find_package(Mongo REQUIRED)
-if(NOT ${MONGO_FOUND})
-	message(FATAL_ERROR "Cannot find mongo cxx driver")
-endif()
-
-
-#================ASSIMP SETTINGS=======================
-find_package(ASSIMPM REQUIRED)
-if(NOT ${ASSIMPM_FOUND})
-	message(FATAL_ERROR "Cannot find assimp")
-endif()
-
-#===============IFCOPENSHELL SETTINGS==================
-find_package(OCCT REQUIRED)
-find_package(IFCOPENSHELL REQUIRED)
-if(NOT ${OCCT_FOUND})
-	message(FATAL_ERROR "Cannot find OCCT")
-endif()
-if(NOT ${IFCOPENSHELL_FOUND})
-	message(FATAL_ERROR "Cannot find IFCOpenShell")
-endif()
-
-#===================== ODA ============================
-if (ODA_SUPPORT)
-	add_definitions(-D_TOOLKIT_IN_DLL_)
-	add_definitions(-DODA_SUPPORT)
-	find_package(ODA REQUIRED)
-endif()
-
-#===================== SYNCHRO ============================
-
-if (SYNCHRO_SUPPORT)
-	add_definitions(-DSYNCHRO_SUPPORT)
-	find_package(SYNCHROREADER REQUIRED)
-	find_package(THRIFT REQUIRED)
-	find_package(ZLIB REQUIRED)
-endif()
-
-
-#==================== AWS S3 SDK ======================
-option (S3_SUPPORT "Build with S3 support" OFF)
-if (S3_SUPPORT)
-	add_definitions(-DS3_SUPPORT)
-	find_package(AWSSDK REQUIRED)
-	if(NOT ${AWSSDK_FOUND})
-		message(FATAL_ERROR "Cannot find AWS SDK")
-	endif()
-endif()
 
 #===================== CRYPTOLENS ============================
 
@@ -144,36 +62,12 @@ option (REPO_NO_GZIP "If zlib is not compiled into boost" OFF)
 
 add_definitions( -DWIN32_LEAN_AND_MEAN )
 
-#Build IFCUtils
-add_subdirectory(ifcUtils)
-
-if(REPO_NO_GZIP)
-	add_definitions(-DREPO_BOOST_NO_GZIP)
-endif()
-
 #bouncer library
 add_subdirectory(bouncer)
-
 
 #client exe
 if (REPO_BUILD_CLIENT)
 	add_subdirectory(client)
-endif()
-
-# gtest
-if(REPO_BUILD_TESTS OR REPO_BUILD_WRAPPER_TESTS)
-	set(gtest_force_shared_crt ON CACHE BOOL "Build gtest as shared library" FORCE)
-	add_subdirectory(submodules/googletest)
-endif()
-
-#tool exe
-if (REPO_BUILD_TOOLS)
-	add_subdirectory(tools)
-endif()
-
-#test exe
-if (REPO_BUILD_TESTS)
-	add_subdirectory(test)
 endif()
 
 # C# wrapper
@@ -181,9 +75,6 @@ if (REPO_BUILD_WRAPPER)
 	add_subdirectory(wrapper)
 endif()
 
-#wrapper test exe
-if (REPO_BUILD_WRAPPER_TESTS)
-	add_subdirectory(wrapper_test)
-endif()
+
 
 
