@@ -112,6 +112,7 @@ namespace Licensing
 			repoTrace << "- session not added to license" << "\n";
 			repoInfo  << "License activation failed: " << error.what() << "\n";
 			repoTrace << activationSummaryBlock << "\n";
+			RunDeactivation();
 			Reset();
 			throw repo::lib::RepoInvalidLicenseException();
 		}
@@ -121,6 +122,7 @@ namespace Licensing
 			repoTrace << "- session not added to license. Error license LicenseKey is null" << "\n";
 			repoInfo << "License activation failed: license LicenseKey is null" << "\n";
 			repoTrace << activationSummaryBlock << "\n";
+			RunDeactivation();
 			Reset();
 			throw repo::lib::RepoInvalidLicenseException();
 		}
@@ -159,6 +161,7 @@ namespace Licensing
 				repoTrace << "- activation result: session activation failed" << "\n";
 				repoInfo << "License activation failed: some checks failed" << "\n";
 				repoTrace << activationSummaryBlock << "\n";
+				RunDeactivation();
 				Reset();
 				throw repo::lib::RepoInvalidLicenseException();
 			}
@@ -169,7 +172,7 @@ namespace Licensing
 	void LicenseValidator::RunDeactivation()
 	{
 #ifdef REPO_LICENSE_CHECK
-		// only deactivate if we have succesfully activated
+		// only deactivate if we have attempted activation first
 		if (instanceUuid.empty() || !cryptolensHandle)
 		{
 			repoError << " Attempting to deactivate without activation, aborting deactivation" << "\n";
